@@ -1,0 +1,47 @@
+<html>
+<head>
+	<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+	<title>${PROGRAM_NAME} user manual</title>
+</head>
+
+<body>
+<h1>${PROGRAM_NAME} user manual</h1>
+
+#if defined(SHOW_TOC)
+
+<p><b>Table of contents</b></p>
+<ul type="disc">
+
+#// This is a one string comment
+#if LANGUAGE=="English"
+	<li><a href="part01/part01.html">${PROGRAM_NAME} user manual (Part 1)</a></li>
+
+	<li><a href="part02/part02-1.html">${PROGRAM_NAME} user manual (Part 2.1)</a></li>
+
+	<li><a href="part02/part02-2.html">${PROGRAM_NAME} user manual (Part 2.2)</a></li>
+
+	<li><a href="part03/part03.html">${PROGRAM_NAME} user manual (Part 3)</a></li>
+#elif LANGUAGE=="Russian"
+	<li><a href="part01/part01.html">Руководство пользователя программы ${PROGRAM_NAME} (Часть 1)</a></li>
+
+	<li><a href="part02/part02-1.html">Руководство пользователя программы ${PROGRAM_NAME} (Часть 2.1)</a></li>
+
+	<li><a href="part02/part02-2.html">Руководство пользователя программы ${PROGRAM_NAME} (Часть 2.2)</a></li>
+
+	<li><a href="part03/part03.html">Руководство пользователя программы ${PROGRAM_NAME} (Часть 3)</a></li>
+#else
+	<li><a href="part01/part01.html">Manuale utente per il software ${PROGRAM_NAME} (Capitolo 1)</a></li>
+
+	<li><a href="part02/part02-1.html">Manuale utente per il software ${PROGRAM_NAME} (Capitolo 2.1)</a></li>
+
+	<li><a href="part02/part02-2.html">Manuale utente per il software ${PROGRAM_NAME} (Capitolo 2.2)</a></li>
+
+	<li><a href="part03/part03.html">Manuale utente per il software ${PROGRAM_NAME} (Capitolo 3)</a></li>
+#endif // #if LANGUAGE=="English"
+
+</ul>
+
+#endif // #if defined(SHOW_TOC)
+
+</body>
+</html>

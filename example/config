@@ -1,0 +1,9 @@
+# The variables without a value
+SHOW_TOC
+VERSION_1
+VERSION_2
+
+# The variables with a value
+PROGRAM_NAME=SampleProgram
+PART3=part3
+LANGUAGE=English

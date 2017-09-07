@@ -1,0 +1,1 @@
+..\build\x64\Release\smacro -isource -o..\build\doc_res -vconfig -e*.txt;*.png

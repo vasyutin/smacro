@@ -1,0 +1,11 @@
+/build/*
+/version/*
+*.user
+*.suo
+*.ncb
+*.sdf
+moc_*.*
+qrc_*.*
+.vc
+*.VC.opendb
+*.VC.db

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QHelpCollectionProject version="1.0">
+    <assistant>
+        <title>${PROGRAM_NAME} user manual</title>
+	<applicationIcon>../qthelp/icon/help_icon.png</applicationIcon>
+	<startPage>qthelp://hpro.sample.help/doc/index.html</startPage>
+        <aboutDialog>
+            <file>../qthelp/about/about.txt</file>
+            <icon>../qthelp/about/about_icon.png</icon>
+        </aboutDialog>
+    </assistant>
+    <docFiles>
+        <generate>
+            <file>
+                <input>sample.qhp</input>
+                <output>../../build/doc/hprohelp.qch</output>
+            </file>
+        </generate>
+        <register>
+            <file>../../build/doc/hprohelp.qch</file>
+        </register>
+    </docFiles>
+</QHelpCollectionProject>

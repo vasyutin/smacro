@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QtHelpProject version="1.0">
+    <namespace>hpro.sample.help</namespace>
+    <virtualFolder>doc</virtualFolder>
+    <filterSection>
+        <toc>
+            <section title="${PROGRAM_NAME} user manual" ref="index.html">
+                <section title="${PROGRAM_NAME} user manual (Part 1)" ref="part01/part01.html"></section>
+                <section title="${PROGRAM_NAME} user manual (Part 2.1)" ref="part02/part02-1.html"></section>
+                <section title="${PROGRAM_NAME} user manual (Part 2.2)" ref="part02/part02-2.html"></section>
+                <section title="${PROGRAM_NAME} user manual (Part 3)" ref="part03/part03.html"></section>
+            </section>
+        </toc>
+        <keywords>
+            <keyword name="First" ref="part01/part01.html"/>
+            <keyword name="Second" ref="part02/part02-1.html"/>
+            <keyword name="Third" ref="part02/part02-2.html"/>
+            <keyword name="Fourth" ref="part03/part03.html"/>
+        </keywords>
+        <files>
+<file>./index.html</file>
+<file>./part01/part01.html</file>
+
+#if defined(VERSION1)
+<file>./part01/images/version1.png</file>
+#endif
+
+#if !defined(VERSION1)
+<file>./part01/images/version2.png</file>
+#endif
+
+<file>./part02/part02-1.html</file>
+<file>./part02/part02-2.html</file>
+<file>./part02/images/part2.png</file>
+<file>./part03/part03.html</file>
+<file>./part03/images/part3.png</file>
+        </files>
+    </filterSection>
+</QtHelpProject>
