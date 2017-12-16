@@ -55,7 +55,7 @@ private:
 	TResult processOperator(QFile &Input_, QString &Line_, QFile &Output_, bool Skip_);
 	static bool isOperator(TResult Result_);
 	void valuesSubstitution(QString &Line_);
-	TResult TProcessor::processLinesTillNextKeyword(QFile &Input_, QString &Line_, 
+	TResult processLinesTillNextKeyword(QFile &Input_, QString &Line_, 
 		QFile &Output_, bool Skip_);
 
 	QRegExp m_NotWhitespaceRegExp, m_VariableRegExp,

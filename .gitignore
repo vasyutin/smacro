@@ -9,3 +9,4 @@ qrc_*.*
 .vc
 *.VC.opendb
 *.VC.db
+/projects/qmake/Makefile

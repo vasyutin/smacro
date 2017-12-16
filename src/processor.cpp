@@ -543,7 +543,7 @@ struct THelper {
 		}
 
 	// ---
-	static bool toReversePolishNotation(TProcessor &This_, QList<TVMValue> &Values_) {
+	static bool toReversePolishNotation(QList<TVMValue> &Values_) {
 		QList<TVMValue> Result;
 		QStack<TVMValue> Stack;
 		//
@@ -784,7 +784,7 @@ if(Lexemes.empty()) {
 
 QList<TVMValue> Values;
 if(!THelper::toVMValues(*this, Lexemes, Values) || 
-	!THelper::toReversePolishNotation(*this, Values)) {
+	!THelper::toReversePolishNotation(Values)) {
 	std::cerr << ": " << (const char*)Input_.fileName().toLocal8Bit() << ':' << m_Line;
 	return false;
 	}
