@@ -49,17 +49,17 @@ $ qmake smacro.pro
 ```
 Then run the make tool that is installed in your system and is able to build Qt projects (depending on your setup it can be **nmake**, **make** etc.)
 
-After that step put the result file `project-root\build\release\smacro.exe` in the directory, that is listed in your PATH environment variable, to ensure that it can be called from a command prompt.
+After that step put the result file `project-root\build\release\smacro.exe` in the directory, that is listed in your **PATH** environment variable, to ensure that it can be called from a command prompt.
 
 #### How to build with Qt Creator (Linux and Windows)
 
-Just open the main project file **<project path>/projects/qmake/smacro.pro** and start building it using Qt Creator controls. As mentioned above all the result binaries are placed in the /build/release or /build/debug folder depending on configuration. You have to copy the result binary (**smacro** in Linux and **smacro.exe** in Windows) to proper location to make it available outside Qt Creator.
+Just open the main project file `project-root/projects/qmake/smacro.pro` and start building it using Qt Creator controls. As mentioned above all the result binaries are placed in the `project-root/build/release` or `project-root/build/debug` folder depending on configuration. You have to copy the result binary (`smacro` in Linux and `smacro.exe` in Windows) to proper location to make it available outside Qt Creator.
 
 #### How to build with Visual Studio 2015 (Windows)
 
-By now I supply solution (.sln) with the project files (.vcproj) files for Visual Studio 2015 Community Edition with Qt5. It is assumed that the environment variable QTDIR is defined for current version of Qt. And it contains the path for the Qt root folder (thus the path to the Qt binaries is '%QTDIR%\bin'). You don't have to install 'Visual Studio Add-in for Qt' (or some similar tool) to build the software.
+By now I supply solution (.sln) with the project files (.vcproj) files for Visual Studio 2015 Community Edition with Qt5. It is assumed that the environment variable **QTDIR** is defined for current version of Qt. And it contains the path for the Qt root folder (thus the path to the Qt binaries is `%QTDIR%\bin`). You don't have to install 'Visual Studio Add-in for Qt' (or some similar tool) to build the software.
 
-To build the software open the solution file **<project path>\projects\VS2015-Qt5\smacro.sln** and start the build process. The compiled binaries will be placed in the folder **<project path>\build\Platform\Configuration**, where the 'Platform' is 'Win32' or 'x64' and the 'Configuration' is 'Debug' or 'Release'. To run the program outside Visual Studio, you have to copy the result binary file **<project path>\build\Platform\Configuration\smacro.exe** to the folder, that is added to your PATH environment variable.
+To build the software open the solution file `project-root\projects\VS2015-Qt5\smacro.sln` and start the build process. The compiled binaries will be placed in the folder `project-root\build\Platform\Configuration`, where the 'Platform' is 'Win32' or 'x64' and the 'Configuration' is 'Debug' or 'Release'. To run the program outside Visual Studio, you have to copy the result binary file `project-root\build\Platform\Configuration\smacro.exe` to the folder, that is added to your **PATH** environment variable.
 
 License
 ----
