@@ -4,7 +4,7 @@ Simple macro processor. A tool that helps to prepare documentation.
 ### Usage
 
 ```sh
-$ smacro <switches>
+smacro <switches>
 ```
 The switches are:
 **-i<input folder>** - the folder, containing documentation to process.
@@ -18,12 +18,12 @@ To understand how this program works see **example** folder in the source tree.
 
 Example of using the program in Windows:
 ```sh
-$ smacro -i..\..\example\source -o..\..\build\doc_res -v..\..\example\config -e*.txt;*.png
+smacro -i..\..\example\source -o..\..\build\doc_res -v..\..\example\config -e*.txt;*.png
 ```
 
 Example of using the program in Linux/Unix:
 ```sh
-$ smacro -i../../example/source -o../../build/doc_res -v../../example/config -e*.txt;*.png
+smacro -i../../example/source -o../../build/doc_res -v../../example/config -e*.txt;*.png
 ```
 
 ### Installation
@@ -35,9 +35,9 @@ The QNetMap can be build in different ways depending of what build tools you are
 Just navigate to the folder `project-root/projects/qmake` and run
 
 ```sh
-$ qmake smacro.pro
-$ make
-$ make install
+qmake smacro.pro
+make
+make install
 ```
 
 #### How to build with QMake in Windows
@@ -45,7 +45,7 @@ $ make install
 In Windows you don't have to make install step. You have to do it manually. 'Change directory' to folder `project-root\projects\qmake` and run the following command in the command prompt
 
 ```sh
-$ qmake smacro.pro
+qmake smacro.pro
 ```
 Then run the make tool that is installed in your system and is able to build Qt projects (depending on your setup it can be **nmake**, **make** etc.)
 
