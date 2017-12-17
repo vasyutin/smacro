@@ -32,7 +32,7 @@ The QNetMap can be build in different ways depending of what build tools you are
 
 #### How to build and install with QMake in Linux
 
-Just navigate to the folder **<project path>/projects/qmake** and run
+Just navigate to the folder `project-root/projects/qmake` and run
 
 ```sh
 $ qmake smacro.pro
@@ -42,14 +42,14 @@ $ make install
 
 #### How to build with QMake in Windows
 
-In Windows you don't have to make install step. You have to do it manually. 'Change directory' to folder **<project path>\projects\qmake** and run the following command in the command prompt
+In Windows you don't have to make install step. You have to do it manually. 'Change directory' to folder `project-root\projects\qmake` and run the following command in the command prompt
 
 ```sh
 $ qmake smacro.pro
 ```
 Then run the make tool that is installed in your system and is able to build Qt projects (depending on your setup it can be **nmake**, **make** etc.)
 
-After that step put the result file **<project path>\build\release\smacro.exe** in the directory, that is listed in your PATH environment variable, to ensure that it can be called from a command prompt.
+After that step put the result file `project-root\build\release\smacro.exe` in the directory, that is listed in your PATH environment variable, to ensure that it can be called from a command prompt.
 
 #### How to build with Qt Creator (Linux and Windows)
 
