@@ -18,12 +18,12 @@ To understand how this program works see **example** folder in the source tree.
 
 Example of using the program in Windows:
 ```sh
-smacro -i..\..\example\source -o..\..\build\doc_res -v..\..\example\config -e*.txt;*.png
+$ smacro -i..\..\example\source -o..\..\build\doc_res -v..\..\example\config -e*.txt;*.png
 ```
 
 Example of using the program in Linux/Unix:
 ```sh
-smacro -i../../example/source -o../../build/doc_res -v../../example/config -e*.txt;*.png
+$ smacro -i../../example/source -o../../build/doc_res -v../../example/config -e*.txt;*.png
 ```
 
 ### Installation
