@@ -26,6 +26,7 @@
 #include "utils.h"
 
 #include <iostream>
+#include <set>
 
 const int RETCODE_OK = 0;
 const int RETCODE_INVALID_PARAMETERS = 1;
