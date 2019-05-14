@@ -1,3 +1,5 @@
+#pragma once
+
 /*
 * This file is part of SMACRO.
 *
@@ -17,22 +19,15 @@
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __processor_h
-#define __processor_h
-
 #include "parameters.h"
-
-#include <QList>
-
-class QFile;
+#include <fstream>
 
 // -----------------------------------------------------------------------
 class TProcessor {
 public:
 	TProcessor(const TParameters &Parameters_);
-	bool processFile(const QString &Input_, const QString &Output_);
-	//
-	bool isExcluded(const QString &FileName_) const;
+	bool processFile(const std::string &Input_, const std::string &Output_);
+	bool isExcluded(const std::string &FileName_) const;
 
 private:
 	enum class TResult {
@@ -51,14 +46,15 @@ private:
 	const TExcludePatterns &m_ExcludePatterns;
 	unsigned m_Line;
 	//
-	TResult readNextLine(QFile &Input_, QString &Line_);
-	TResult processOperator(QFile &Input_, QString &Line_, QFile &Output_, bool Skip_);
+	TResult readNextLine(std::ifstream &Input_, std::string &Line_);
+	TResult processOperator(std::ifstream &Input_, std::string &Line_, std::ofstream &Output_, 
+		bool Skip_);
 	static bool isOperator(TResult Result_);
-	void valuesSubstitution(QString &Line_);
-	TResult processLinesTillNextKeyword(QFile &Input_, QString &Line_, 
-		QFile &Output_, bool Skip_);
+	void valuesSubstitution(std::string &Line_);
+	TResult processLinesTillNextKeyword(std::ifstream &Input_, std::string &Line_, 
+		std::ofstream &Output_, bool Skip_);
 
-	QRegExp m_NotWhitespaceRegExp, m_VariableRegExp,
+	std::regex m_NotWhitespaceRegExp, m_VariableRegExp,
 		m_IfRegExp, m_ElifRegExp, m_ElseRegExp, m_EndifRegExp, m_CommentOperatorRegExp,
 		m_CommentRegExp;
 
@@ -82,12 +78,10 @@ private:
 	//
 	struct TLexemeRegExp {
 		TLexemeType Type;
-		QRegExp RegExp;
+		std::regex RegExp;
 		};
-	QList<TLexemeRegExp> m_LexemeRegExps;
+	std::vector<TLexemeRegExp> m_LexemeRegExps;
 
 	// Input_ is necessary for obtaining an input file name
-	bool calculateExp(const QString &Line_, bool &Result_, const QFile &Input_);
+	bool calculateExp(const std::string &Line_, bool &Result_, const std::string &InputFile_);
 	};
-
-#endif // #ifndef __processor_h

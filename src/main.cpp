@@ -22,14 +22,8 @@
 // Gets the file with the values of variables and processes the documentation's
 // files according to the values of the variables.
 // -----------------------------------------------------------------------
-#include <QCoreApplication>
-#include <QTextCodec>
-#include <QFile>
-#include <QDir>
-#include <QStringList>
-#include <QSet>
-
 #include "processor.h"
+#include "utils.h"
 
 #include <iostream>
 
@@ -65,8 +59,8 @@ bool ParseVariables(const char *FileName_, TParameters &Parameters_)
 {
 struct TProcessor {
 	TParameters &m_Parameters;
-	QRegExp m_VariableWithValue;
-	QRegExp m_VariableWithoutValue;
+	std::regex m_VariableWithValue;
+	std::regex m_VariableWithoutValue;
 
 	//
 	TProcessor(TParameters &Parameters_): 
@@ -224,16 +218,20 @@ return true;
 int main(int Argc_, char *Argv_[])
 {
 struct THelper {
-	static void normalizeFolderName(QString &Value_) {
+	static void normalizeFolderName(std::string &Value_) {
+		std::string Folder = 
+
 		QDir Folder(Value_);
 		Value_ = QDir::toNativeSeparators(Folder.absolutePath());
+
+		ToNativeSeparators
+
 		Q_ASSERT(!Value_.endsWith(QDir::separator()));
 		Value_ += QDir::separator();
 		}
 	};
 
-QCoreApplication HPro(Argc_, Argv_);
-//
+// ---
 TParameters Parameters;
 if(!ParseParameters(Argc_, Argv_, Parameters)) {
 	std::cerr << '\n' << std::endl;

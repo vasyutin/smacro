@@ -19,18 +19,7 @@
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <vector>
-#include <regex>
-#include <unordered_map>
 #include <string>
 
-typedef std::unordered_map<std::string, std::string> TVariables;
-typedef std::vector<std::regex> TExcludePatterns;
-
-// -----------------------------------------------------------------------
-struct TParameters {
-	std::string InputFolder;
-	std::string OutputFolder;
-	TVariables Variables;
-	TExcludePatterns ExcludePatterns;
-	};
+std::string ToNativeSeparators(std::string &Path_);
+std::string AbsolutePath(std::string &Path_);
