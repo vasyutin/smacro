@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\processor.cpp" />
+    <ClCompile Include="..\..\src\utils.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F28668BD-F935-4C65-9695-F07DCA5D924A}</ProjectGuid>

@@ -20,16 +20,29 @@
 */
 #include "globals.h"
 
+#include <string.h>
+
+// -----------------------------------------------------------------------
 #if defined(SMACRO_WINDOWS)
 	#if defined(__MINGW32__) || defined(__MINGW64__)
 		std::string WStringToWindowsLocal(const std::wstring &Unicode_);
 		void WindowsLocalToWString(const char *Local_, std::wstring &String_);
 	#endif
 
-	std::string FileNameToConsole(const TFileNameString &Unicode_);
+	std::string FileNameStringToConsole(const TFileNameString &Unicode_);
 #else
-	#define FileNameToConsole(Param_) (Param_)
+	#define FileNameStringToConsole(Param_) (Param_)
 #endif // #if defined(SMACRO_WINDOWS)
+
+// -----------------------------------------------------------------------
+inline size_t FileNameStringLength(const TFileNameChar *String_) 
+{
+#if defined(SMACRO_WINDOWS)
+	return wcslen(String_);
+#else
+	return strlen(String_);
+#endif
+}
 
 
 

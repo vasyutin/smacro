@@ -24,9 +24,9 @@
 #include <iostream>
 #include <set>
 #include <cctype>
-#include <functional>
 
 #include <assert.h>
+#include <ctype.h>
 
 const int RETCODE_OK = 0;
 const int RETCODE_INVALID_PARAMETERS = 1;
@@ -56,26 +56,19 @@ std::cout << "SMACRO. Simple macro processor. Helps prepare documentation. "
 }
 
 // -----------------------------------------------------------------------
-inline std::string& TrimLeft(std::string &String_) 
-{
-String_.erase(String_.begin(), std::find_if(String_.begin(), String_.end(), 
-	std::not1(std::ptr_fun<int, int>(std::isspace))));
-return String_;
-}
+inline bool NotSpace(char Char_) {return !std::isspace(Char_);}
+
+#if defined(SMACRO_WINDOWS)
+	inline bool NotSpace(wchar_t Char_) {return !iswspace(Char_);}
+#endif
 
 // -----------------------------------------------------------------------
-inline std::string& TrimRight(std::string &String_) 
+template <_TString>
+void TrimString(_TString &String_) 
 {
-String_.erase(std::find_if(String_.rbegin(), String_.rend(), 
-	std::not1(std::ptr_fun<int, int>(std::isspace))).base(), String_.end());
-return String_;
+String_.erase(String_.begin(), std::find_if(String_.begin(), String_.end(), NotSpace));
+String_.erase(std::find_if(String_.rbegin(), String_.rend(), NotSpace).base(), String_.end());
 }
-
-// -----------------------------------------------------------------------
-inline std::string& TrimString(std::string &String_) 
-{
-return TrimLeft(TrimRight(String_));
-}	
 
 // -----------------------------------------------------------------------
 bool ParseVariables(const TFileNameChar *FileName_, TParameters &Parameters_)
@@ -114,7 +107,7 @@ struct TProcessor {
 	std::ifstream File(FileName_);
 #endif
 if(!File) {
-	std::cerr << "Can't open file: '" << FileNameToConsole(FileName_) << "'.";
+	std::cerr << "Can't open file: '" << FileNameStringToConsole(FileName_) << "'.";
 	return false;
 	}
 //
@@ -131,8 +124,43 @@ return true;
 }
 
 // -----------------------------------------------------------------------
+void WildcardToRegexp(TFileNameString &String_)
+{
+} 
+
+// -----------------------------------------------------------------------
 bool ParseMasks(const TFileNameChar *Masks_, TExcludePatterns &ExcludePatterns_)
 {
+std::set<TFileNameString> Patterns;
+
+const TFileNameChar *End = Masks_ + FileNameStringLength(Masks_);
+while(true) {
+	const TFileNameChar *Delim = std::find(Masks_, End, TFileNameChar(' '));
+	if(Delim == Masks_) {
+		Masks_++;
+		continue;
+		}
+	//
+	TFileNameString Value(Masks_, Delim);
+	TrimString(Value);
+	if(Value.empty()) continue;
+	//
+	if(Patterns.find(Value) != Patterns.end()) continue;
+
+
+	Patterns.insert(std::move(Value));
+	//
+	if(Delim == End) break;
+	Masks_ = Delim + 1;
+	}
+
+
+
+
+
+
+
+
 QSet<QString> Patterns;
 
 
@@ -160,22 +188,11 @@ return true;
 // -----------------------------------------------------------------------
 bool ParseParameters(int Argc_, TFileNameChar *Argv_[], TParameters &Parameters_)
 {
-struct THelper {
-	static size_t length(const TFileNameChar *String_) {
-		#if defined(SMACRO_WINDOWS)
-			return wcslen(String_);
-		#else
-			return strlen(String_);
-		#endif
-		}
-	};
-
-// ---
 for(int i = 1; i < Argc_; ++i) {
 	const TFileNameChar *Argument = Argv_[i];
-	size_t ArgLen = THelper::length(Argument);
+	size_t ArgLen = FileNameStringLength(Argument);
 	if(ArgLen < 2 || Argument[0] != TFileNameChar('-')) {
-		std::cerr << "Invalid argument: '" << FileNameToConsole(Argument) << "'.";
+		std::cerr << "Invalid argument: '" << FileNameStringToConsole(Argument) << "'.";
 		return false;
 		}
 	//
@@ -191,12 +208,13 @@ for(int i = 1; i < Argc_; ++i) {
 		break;
 	case TFileNameChar('e'):
 		if(!ParseMasks(Argument + 2, Parameters_.ExcludePatterns)) {
-			std::cerr << "Invalid file mask found: '" << FileNameToConsole(Argument + 2) << "'.";
+			std::cerr << "Invalid file mask found: '" << FileNameStringToConsole(Argument + 2) << 
+				"'.";
 			return false;
 			}
 		break;
 	default:
-		std::cerr << "Invalid switch: '" << FileNameToConsole(Argument) << "'.";
+		std::cerr << "Invalid switch: '" << FileNameStringToConsole(Argument) << "'.";
 		return false;
 		} // switch
 	}
