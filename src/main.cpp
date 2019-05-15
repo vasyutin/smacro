@@ -17,16 +17,16 @@
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
 
-// -----------------------------------------------------------------------
-// Processes the folder with the documentation in the HTML format.
-// Gets the file with the values of variables and processes the documentation's
-// files according to the values of the variables.
-// -----------------------------------------------------------------------
+#include "globals.h"
 #include "processor.h"
 #include "utils.h"
 
 #include <iostream>
 #include <set>
+#include <cctype>
+#include <functional>
+
+#include <assert.h>
 
 const int RETCODE_OK = 0;
 const int RETCODE_INVALID_PARAMETERS = 1;
@@ -56,7 +56,29 @@ std::cout << "SMACRO. Simple macro processor. Helps prepare documentation. "
 }
 
 // -----------------------------------------------------------------------
-bool ParseVariables(const char *FileName_, TParameters &Parameters_)
+inline std::string& TrimLeft(std::string &String_) 
+{
+String_.erase(String_.begin(), std::find_if(String_.begin(), String_.end(), 
+	std::not1(std::ptr_fun<int, int>(std::isspace))));
+return String_;
+}
+
+// -----------------------------------------------------------------------
+inline std::string& TrimRight(std::string &String_) 
+{
+String_.erase(std::find_if(String_.rbegin(), String_.rend(), 
+	std::not1(std::ptr_fun<int, int>(std::isspace))).base(), String_.end());
+return String_;
+}
+
+// -----------------------------------------------------------------------
+inline std::string& TrimString(std::string &String_) 
+{
+return TrimLeft(TrimRight(String_));
+}	
+
+// -----------------------------------------------------------------------
+bool ParseVariables(const TFileNameChar *FileName_, TParameters &Parameters_)
 {
 struct TProcessor {
 	TParameters &m_Parameters;
@@ -65,18 +87,19 @@ struct TProcessor {
 
 	//
 	TProcessor(TParameters &Parameters_): 
-		m_Parameters(Parameters_), 
+		m_Parameters(Parameters_),
 		m_VariableWithValue("([A-Za-z0-9_]+)\\s*=(.+)"), 
 		m_VariableWithoutValue("[A-Za-z0-9_]+") {}
 
 	//
-	bool processString(const QString &WLine_) {
-		if(m_VariableWithValue.exactMatch(WLine_)) {
-			m_Parameters.Variables.insert(m_VariableWithValue.cap(1), m_VariableWithValue.cap(2));
+	bool processString(const std::string &WLine_) {
+		std::smatch Match;
+		if(std::regex_match(WLine_, Match, m_VariableWithValue)) {
+			m_Parameters.Variables.insert(std::make_pair(Match[1], Match[2]));
 			return true;
 			}
-		if(m_VariableWithoutValue.exactMatch(WLine_)) {
-			m_Parameters.Variables.insert(m_VariableWithValue.cap(0), QString());
+		if(std::regex_match(WLine_, Match, m_VariableWithoutValue)) {
+			m_Parameters.Variables.insert(std::make_pair(Match[1], std::string()));
 			return true;
 			}
 		return false;
@@ -84,29 +107,36 @@ struct TProcessor {
 	};
 
 // ---
-QFile VariablesFile(QString::fromLocal8Bit(FileName_));
-if(!VariablesFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-	std::cerr << "Can't open file: '" << FileName_ << "'.";
+#if defined(__MINGW32__) || defined(__MINGW64__)
+	std::string Local8FileName = WStringToWindowsLocal(FileName_);
+	std::ifstream File(Local8FileName);
+#else
+	std::ifstream File(FileName_);
+#endif
+if(!File) {
+	std::cerr << "Can't open file: '" << FileNameToConsole(FileName_) << "'.";
 	return false;
 	}
 //
+std::string Line;
 TProcessor Processor(Parameters_);
-QByteArray Line;
-QString WLine;
-while(!VariablesFile.atEnd()) {
-	Line = VariablesFile.readLine();
-	WLine = QString::fromUtf8(Line.trimmed());
-	if(WLine.isEmpty() || WLine[0] == QLatin1Char('#')) continue;
-	if(!Processor.processString(WLine)) 
+while(std::getline(File, Line)) {
+	// Удаляем пробелы в начале и конце строки
+	TrimString(Line);
+	if(Line.empty() || Line[0] == '#') continue;
+	if(!Processor.processString(Line)) 
 		return false;
 	}
 return true;
 }
 
 // -----------------------------------------------------------------------
-bool ParseMasks(const char *Masks_, QSet<QString> &Patterns_, 
-	TExcludePatterns &ExcludePatterns_)
+bool ParseMasks(const TFileNameChar *Masks_, TExcludePatterns &ExcludePatterns_)
 {
+QSet<QString> Patterns;
+
+
+
 QStringList MasksList = QString::fromLocal8Bit(Masks_).split(';', QString::SkipEmptyParts);
 for(QStringList::Iterator it = MasksList.begin(); it != MasksList.end(); ++it) {
 	*it = it->trimmed();
@@ -128,41 +158,50 @@ return true;
 }
 
 // -----------------------------------------------------------------------
-bool ParseParameters(int Argc_, char *Argv_[], TParameters &Parameters_)
+bool ParseParameters(int Argc_, TFileNameChar *Argv_[], TParameters &Parameters_)
 {
-QSet<QString> Patterns;
+struct THelper {
+	static size_t length(const TFileNameChar *String_) {
+		#if defined(SMACRO_WINDOWS)
+			return wcslen(String_);
+		#else
+			return strlen(String_);
+		#endif
+		}
+	};
 
+// ---
 for(int i = 1; i < Argc_; ++i) {
-	const char *Argument = Argv_[i];
-	size_t ArgLen = strlen(Argument);
-	if(ArgLen < 2 || Argument[0] != '-') {
-		std::cerr << "Invalid argument: '" << Argument << "'.";
+	const TFileNameChar *Argument = Argv_[i];
+	size_t ArgLen = THelper::length(Argument);
+	if(ArgLen < 2 || Argument[0] != TFileNameChar('-')) {
+		std::cerr << "Invalid argument: '" << FileNameToConsole(Argument) << "'.";
 		return false;
 		}
 	//
 	switch(Argument[1]) {
-	case 'i':
-		Parameters_.InputFolder = QString::fromLocal8Bit(Argument + 2);
+	case TFileNameChar('i'):
+		Parameters_.InputFolder = Argument + 2;
 		break;
-	case 'o':
-		Parameters_.OutputFolder = QString::fromLocal8Bit(Argument + 2);
+	case TFileNameChar('o'):
+		Parameters_.OutputFolder = Argument + 2;
 		break;
-	case 'v':
+	case TFileNameChar('v'):
 		if(!ParseVariables(Argument + 2, Parameters_)) return false;
 		break;
-	case 'e':
-		if(!ParseMasks(Argument + 2, Patterns, Parameters_.ExcludePatterns)) {
-			std::cerr << "Invalid file mask found: '" << Argument + 2 << "'.";
+	case TFileNameChar('e'):
+		if(!ParseMasks(Argument + 2, Parameters_.ExcludePatterns)) {
+			std::cerr << "Invalid file mask found: '" << FileNameToConsole(Argument + 2) << "'.";
 			return false;
 			}
 		break;
 	default:
-		std::cerr << "Invalid switch: '" << Argument[0] << "'.";
+		std::cerr << "Invalid switch: '" << FileNameToConsole(Argument) << "'.";
 		return false;
 		} // switch
 	}
 	
-if(Parameters_.InputFolder.isEmpty() || Parameters_.OutputFolder.isEmpty()) {
+if(Parameters_.InputFolder.empty() || Parameters_.OutputFolder.empty()) {
 	std::cerr << "No input or output folder was specified.";
 	return false;
 	}
@@ -170,7 +209,8 @@ return true;
 }
 
 // -----------------------------------------------------------------------
-bool ProcessFolder(const QString &Input_, const QString &Output_, TProcessor &Processor_)
+bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_, 
+	TProcessor &Processor_)
 {
 QDir InputFolder(Input_);
 if(!InputFolder.exists()) {
@@ -216,23 +256,37 @@ return true;
 }
 
 // -----------------------------------------------------------------------
-int main(int Argc_, char *Argv_[])
+// Processes the folder with the documentation in the HTML format.
+// Gets the file with the values of variables and processes the documentation's
+// files according to the values of the variables.
+// -----------------------------------------------------------------------
+#if defined(__MINGW32__) || defined(__MINGW64__)
+	int main(int Argc_, char *ArgvLocal8_[])
+#elif defined(SMACRO_WINDOWS)
+	int wmain(int Argc_, wchar_t *Argv_[])
+#else
+	int main(int Argc_, char *Argv_[])
+#endif
 {
 struct THelper {
-	static void normalizeFolderName(std::string &Value_) {
-		std::string Folder = 
-
-		QDir Folder(Value_);
-		Value_ = QDir::toNativeSeparators(Folder.absolutePath());
-
-		ToNativeSeparators
-
-		Q_ASSERT(!Value_.endsWith(QDir::separator()));
-		Value_ += QDir::separator();
+	static void normalizeFolderName(TFileNameString &Value_) {
+		assert(!Value_.empty());
+		if(Value_[Value_.size() - 1] != DIR_SEPARATOR)
+			Value_ += DIR_SEPARATOR;
 		}
 	};
 
 // ---
+#if defined(__MINGW32__) || defined(__MINGW64__)
+	std::vector<const wchar_t*> ArgvPtrs(Argc_);
+	std::vector<std::wstring> ArgvStrings(Argc_);
+	for(int i = 0; i < Argc_; ++i) {
+		WindowsLocalToWString(ArgvLocal8_[i], ArgvStrings[i]);
+		ArgvPtrs[i] = ArgvStrings[i].c_str();
+		}
+	const wchar_t **Argv_ = &ArgvPtrs[0];
+#endif
+
 TParameters Parameters;
 if(!ParseParameters(Argc_, Argv_, Parameters)) {
 	std::cerr << '\n' << std::endl;

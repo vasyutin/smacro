@@ -18,8 +18,18 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
+#include "globals.h"
 
-#include <string>
+#if defined(SMACRO_WINDOWS)
+	#if defined(__MINGW32__) || defined(__MINGW64__)
+		std::string WStringToWindowsLocal(const std::wstring &Unicode_);
+		void WindowsLocalToWString(const char *Local_, std::wstring &String_);
+	#endif
 
-std::string ToNativeSeparators(std::string &Path_);
-std::string AbsolutePath(std::string &Path_);
+	std::string FileNameToConsole(const TFileNameString &Unicode_);
+#else
+	#define FileNameToConsole(Param_) (Param_)
+#endif // #if defined(SMACRO_WINDOWS)
+
+
+

@@ -18,24 +18,32 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "globals.h"
 
-#include <vector>
-#include <regex>
-#include <unordered_map>
+#include <string>
 
-typedef std::unordered_map<std::string, std::string> TVariables;
-
-#if defined(SMACRO_WINDOWS)
-	typedef std::vector<std::wregex> TExcludePatterns;
-#else
-	typedef std::vector<std::regex> TExcludePatterns;
+#ifdef _MSC_VER
+   #if defined(_WIN64) || defined(_WIN32)
+      #ifndef SMACRO_WINDOWS
+         #define SMACRO_WINDOWS
+		#endif
+   #endif
+#elif defined(__MINGW32__) || defined(__MINGW64__)
+   #ifndef SMACRO_WINDOWS
+      #define SMACRO_WINDOWS
+	#endif
+#elif defined(__linux__) || defined(__linux)
+	#ifndef SMACRO_LINUX
+		#define SMACRO_LINUX
+	#endif
 #endif
 
-// -----------------------------------------------------------------------
-struct TParameters {
-	TFileNameString InputFolder;
-	TFileNameString OutputFolder;
-	TVariables Variables;
-	TExcludePatterns ExcludePatterns;
-	};
+#if defined(SMACRO_WINDOWS)
+	typedef wchar_t TFileNameChar;
+	typedef std::wstring TFileNameString;
+	#define DIR_SEPARATOR wchar_t('\\')
+#else
+	typedef char TFileNameChar;
+	typedef std::string TFileNameString;
+	#define DIR_SEPARATOR '/'
+#endif
+
