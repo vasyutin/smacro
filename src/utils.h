@@ -20,7 +20,16 @@
 */
 #include "globals.h"
 
-#include <string.h>
+#include <vector>
+
+// -----------------------------------------------------------------------
+bool FolderExists(const TFileNameChar *Folder_);
+bool MakePath(const TFileNameChar *Path_);
+bool FolderEntries(const TFileNameChar *Folder_, std::vector<TFileNameString> &Folders_, 
+	std::vector<TFileNameString> &Files_);
+bool FileExists(const TFileNameChar *File_);
+bool RemoveFile(const TFileNameChar *File_);
+bool CopyFile(const TFileNameChar *Src_, const TFileNameChar *Dst_);
 
 // -----------------------------------------------------------------------
 #if defined(SMACRO_WINDOWS)
@@ -33,16 +42,5 @@
 #else
 	#define FileNameStringToConsole(Param_) (Param_)
 #endif // #if defined(SMACRO_WINDOWS)
-
-// -----------------------------------------------------------------------
-inline size_t FileNameStringLength(const TFileNameChar *String_) 
-{
-#if defined(SMACRO_WINDOWS)
-	return wcslen(String_);
-#else
-	return strlen(String_);
-#endif
-}
-
 
 

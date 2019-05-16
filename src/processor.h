@@ -26,8 +26,8 @@
 class TProcessor {
 public:
 	TProcessor(const TParameters &Parameters_);
-	bool processFile(const std::string &Input_, const std::string &Output_);
-	bool isExcluded(const std::string &FileName_) const;
+	bool processFile(const TFileNameString &Input_, const TFileNameString &Output_);
+	bool isExcluded(const TFileNameString &FileName_) const;
 
 private:
 	enum class TResult {

@@ -16,7 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include "globals.h"
 #include "processor.h"
 #include "utils.h"
@@ -53,6 +52,16 @@ std::cout << "SMACRO. Simple macro processor. Helps prepare documentation. "
 "Example:\n"
 " smacro -i..\\..\\example\\source -o..\\..\\build\\doc_res "
 "-v..\\..\\example\\config -e*.txt;*.png";
+}
+
+// -----------------------------------------------------------------------
+inline size_t FileNameStringLength(const TFileNameChar *String_) 
+{
+#if defined(SMACRO_WINDOWS)
+	return wcslen(String_);
+#else
+	return strlen(String_);
+#endif
 }
 
 // -----------------------------------------------------------------------
@@ -264,102 +273,41 @@ return true;
 bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_, 
 	TProcessor &Processor_)
 {
-
-
-
-/*
-QDir InputFolder(Input_);
-if(!InputFolder.exists()) {
-	std::cerr << "Error accessing folder '" << (const char*)Input_.toLocal8Bit() << "'.";
+if(!FolderExists(Input_.c_str())) {
+	std::cerr << "Error accessing folder '" << FileNameStringToConsole(Input_) << "'.";
 	return false;
 	}
-//
-QDir OutputFolder(Output_);
-if(!OutputFolder.exists()) {
-	if(!OutputFolder.mkpath(Output_)) {
-		std::cerr << "Can't create folder '" << (const char*)Output_.toLocal8Bit() << "'.";
+if(!FolderExists(Output_.c_str())) {
+	if(!MakePath(Output_.c_str())) {
+		std::cerr << "Can't create folder '" << FileNameStringToConsole(Output_) << "'.";
 		return false;
 		}
 	}
-// Processing files
-QStringList FilesList = InputFolder.entryList(QDir::Files | QDir::Hidden | QDir::System);
-for(QStringList::iterator it = FilesList.begin(); it != FilesList.end(); ++it) {
-	QString InputFile(Input_ + *it), OutputFile(Output_ + *it);
-	if(QFile::exists(OutputFile)) {
-		if(!QFile::remove(OutputFile)) {
-			std::cerr << "Can't write file '" << (const char*)OutputFile.toLocal8Bit() << "'.";
+
+std::vector<TFileNameString> Folders, Files;
+if(!FolderEntries(Input_.c_str(), Folders, Files)) {
+	std::cerr << "Can't get contents of the folder '" << FileNameStringToConsole(Input_) << "'.";
+	return false;
+	}
+for(auto it = Files.begin(); it != Files.end(); ++it) {
+	TFileNameString InputFile(Input_ + *it), OutputFile(Output_ + *it);
+	if(FileExists(OutputFile.c_str())) {
+		if(!RemoveFile(OutputFile.c_str())) {
+			std::cerr << "Can't write file '" << FileNameStringToConsole(OutputFile) << "'.";
 			return false;
 			}
 		}
 	bool Result = Processor_.isExcluded(*it)? 
-		QFile::copy(InputFile, OutputFile):
+		CopyFile(InputFile.c_str(), OutputFile.c_str()):
 		Processor_.processFile(InputFile, OutputFile);
 	//
 	if(!Result) {
-		//std::cerr << "Can't write file '" << (const char*)OutputFile.toLocal8Bit() << "'.";
+		std::cerr << "Can't write file '" << FileNameStringToConsole(OutputFile) << "'.";
 		return false;
 		}
 	}
-// Processing folders
-FilesList = InputFolder.entryList(QDir::Dirs | QDir::Hidden | QDir::System | 
-	QDir::NoDotAndDotDot | QDir::NoSymLinks);
-for(QStringList::iterator it = FilesList.begin(); it != FilesList.end(); ++it) {
-	if(!ProcessFolder(Input_ + *it + QDir::separator(), Output_ + *it + QDir::separator(), 
-		Processor_))
-		return false;
-	}
-*/
 return true;
 }
-
-/*
-#if defined(SMACRO_WINDOWS)
-	WIN32_FIND_DATAW FindFileData;
-	HANDLE Handler = FindFirstFileW((Dir + L"*.*").c_str(), &FindFileData);
-	if(Handler == INVALID_HANDLE_VALUE) return true;
-	//
-	do {
-		if((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ||
-		   !wcscmp(FindFileData.cFileName, L"..") || !wcscmp(FindFileData.cFileName, L"."))
-		   continue;
-		  //
-		THelper::processFile(*this, Dir, FindFileData.cFileName);
-		} while (FindNextFileW(Handler, &FindFileData) != 0);
-	FindClose(Handler);
-#else 
-	DIR *DirStream = opendir(Dir.c_str());
-	if(!DirStream) return true;
-	//
-	struct dirent* FileHandle;
-	while((FileHandle = readdir(DirStream)) != NULL) {
-		if(!(FileHandle->d_type == DT_REG || FileHandle->d_type == DT_LNK) ||
-			!strcmp(FileHandle->d_name, ".") || !strcmp(FileHandle->d_name, "..")) 
-			continue;
-		//
-		THelper::processFile(*this, Dir, FileHandle->d_name);
-		}
-	closedir(DirStream);
-#endif
-
-*/
-
-/*/
-#if defined(SMACRO_WINDOWS)
-	String_ = g_GlobalConfiguration.usersSettingsDir();
-	String_ += g_ProtectedNetworksDirName;
-	if(Create_) {
-		if(_waccess(String_.c_str(), 0)) _wmkdir(String_.c_str());
-		}
-	String_ += L'\\';
-#else
-	String_ = g_GlobalConfiguration.usersSettingsDir() + g_ProtectedNetworksDirName;
-	if(Create_) {
-		if(access(String_.c_str(), 0)) mkdir(String_.c_str(), ACCESSPERMS);
-		}
-	String_ += '/';
-#endif
-*/
-
 
 // -----------------------------------------------------------------------
 // Processes the folder with the documentation in the HTML format.
