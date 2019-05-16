@@ -56,18 +56,24 @@ std::cout << "SMACRO. Simple macro processor. Helps prepare documentation. "
 }
 
 // -----------------------------------------------------------------------
-inline bool NotSpace(char Char_) {return !std::isspace(Char_);}
-
-#if defined(SMACRO_WINDOWS)
-	inline bool NotSpace(wchar_t Char_) {return !iswspace(Char_);}
-#endif
-
-// -----------------------------------------------------------------------
-template <_TString>
+template <typename _TString>
 void TrimString(_TString &String_) 
 {
-String_.erase(String_.begin(), std::find_if(String_.begin(), String_.end(), NotSpace));
-String_.erase(std::find_if(String_.rbegin(), String_.rend(), NotSpace).base(), String_.end());
+struct THelper {
+	static bool notASpace(typename _TString::value_type Char_) {
+		#if defined(SMACRO_WINDOWS)
+			if(sizeof(Char_) == sizeof(wchar_t))
+				return !iswspace((wint_t)Char_);
+			else
+		#endif				
+		return !std::isspace((int)Char_);
+		}
+	};
+
+// ---
+String_.erase(String_.begin(), std::find_if(String_.begin(), String_.end(), THelper::notASpace));
+String_.erase(std::find_if(String_.rbegin(), String_.rend(), THelper::notASpace).base(), 
+	String_.end());
 }
 
 // -----------------------------------------------------------------------
@@ -124,8 +130,59 @@ return true;
 }
 
 // -----------------------------------------------------------------------
-void WildcardToRegexp(TFileNameString &String_)
+template <typename _TString>
+void WildcardToRegexp(_TString &String_)
 {
+typedef typename _TString::value_type TChar;
+
+struct THelper {
+	static inline bool isAlphaOrDigit(char Char_) {return isalpha(Char_) || isdigit(Char_);}
+	#if defined(SMACRO_WINDOWS)
+		static inline bool isAlphaOrDigit(wchar_t Char_) {
+			return iswalpha(Char_) || iswdigit(Char_);
+			}
+	#endif
+	};
+
+struct TWildcardReplacementItem {
+	TChar Source;
+	TChar Replacement[2];
+	};
+
+static const TWildcardReplacementItem Replacement[] = {
+	{TChar('$'), {TChar('\\'), TChar('$')}},
+	{TChar('('), {TChar('\\'), TChar('(')}},
+	{TChar(')'), {TChar('\\'), TChar(')')}},
+	{TChar('*'), {TChar('.'), TChar('*')}},
+	{TChar('+'), {TChar('\\'), TChar('+')}},
+	{TChar('.'), {TChar('\\'), TChar('.')}},
+	{TChar('['), {TChar('\\'), TChar('[')}},
+	{TChar('\\'), {TChar('\\'), TChar('\\')}},
+	{TChar(']'), {TChar('\\'), TChar(']')}},
+	{TChar('^'), {TChar('\\'), TChar('^')}},
+	{TChar('{'), {TChar('\\'), TChar('{')}},
+	{TChar('|'), {TChar('\\'), TChar('|')}},
+	{TChar('}'), {TChar('\\'), TChar('}')}}
+	};
+
+// ---
+const TWildcardReplacementItem *ReplacementEnd = 
+	Replacement + (sizeof(Replacement) / sizeof(TWildcardReplacementItem));
+
+for(auto it = String_.begin(); it != String_.end(); ++it) {
+	if(THelper::isAlphaOrDigit(*it)) continue;
+	if(*it == TChar('?')) {
+		*it = TChar('.');
+		continue;
+		}
+	for(auto ReplIt = Replacement; ReplIt != ReplacementEnd; ++ReplIt) {
+		if(ReplIt->Source == *it) {
+			*it = ReplIt->Replacement[0];
+			it = String_.insert(it + 1, ReplIt->Replacement[1]);
+			break;
+			}
+		}
+	}
 } 
 
 // -----------------------------------------------------------------------
@@ -146,41 +203,18 @@ while(true) {
 	if(Value.empty()) continue;
 	//
 	if(Patterns.find(Value) != Patterns.end()) continue;
-
-
-	Patterns.insert(std::move(Value));
+	Patterns.insert(Value);
+	WildcardToRegexp(Value);
+	try {
+		ExcludePatterns_.push_back(std::move(TExcludePatterns::value_type(Value)));
+		}
+	catch(std::regex_error&) {
+		std::cerr << "Invalid pattern: '" << FileNameStringToConsole(Value) << "'.";
+		return false;
+		}
 	//
 	if(Delim == End) break;
 	Masks_ = Delim + 1;
-	}
-
-
-
-
-
-
-
-
-QSet<QString> Patterns;
-
-
-
-QStringList MasksList = QString::fromLocal8Bit(Masks_).split(';', QString::SkipEmptyParts);
-for(QStringList::Iterator it = MasksList.begin(); it != MasksList.end(); ++it) {
-	*it = it->trimmed();
-	if(it->isEmpty()) return false;
-	}
-//
-for(QStringList::Iterator it = MasksList.begin(); it != MasksList.end(); ++it) {
-	if(Patterns_.contains(*it)) continue;
-	//
-	ExcludePatterns_.push_back(QRegExp(*it, 
-		#ifdef Q_OS_WIN
-			Qt::CaseInsensitive, QRegExp::Wildcard));
-		#else
-			Qt::CaseSensitive, QRegExp::WildcardUnix));
-		#endif
-	Patterns_.insert(*it);
 	}
 return true;
 }
@@ -230,6 +264,10 @@ return true;
 bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_, 
 	TProcessor &Processor_)
 {
+
+
+
+/*
 QDir InputFolder(Input_);
 if(!InputFolder.exists()) {
 	std::cerr << "Error accessing folder '" << (const char*)Input_.toLocal8Bit() << "'.";
@@ -270,8 +308,58 @@ for(QStringList::iterator it = FilesList.begin(); it != FilesList.end(); ++it) {
 		Processor_))
 		return false;
 	}
+*/
 return true;
 }
+
+/*
+#if defined(SMACRO_WINDOWS)
+	WIN32_FIND_DATAW FindFileData;
+	HANDLE Handler = FindFirstFileW((Dir + L"*.*").c_str(), &FindFileData);
+	if(Handler == INVALID_HANDLE_VALUE) return true;
+	//
+	do {
+		if((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ||
+		   !wcscmp(FindFileData.cFileName, L"..") || !wcscmp(FindFileData.cFileName, L"."))
+		   continue;
+		  //
+		THelper::processFile(*this, Dir, FindFileData.cFileName);
+		} while (FindNextFileW(Handler, &FindFileData) != 0);
+	FindClose(Handler);
+#else 
+	DIR *DirStream = opendir(Dir.c_str());
+	if(!DirStream) return true;
+	//
+	struct dirent* FileHandle;
+	while((FileHandle = readdir(DirStream)) != NULL) {
+		if(!(FileHandle->d_type == DT_REG || FileHandle->d_type == DT_LNK) ||
+			!strcmp(FileHandle->d_name, ".") || !strcmp(FileHandle->d_name, "..")) 
+			continue;
+		//
+		THelper::processFile(*this, Dir, FileHandle->d_name);
+		}
+	closedir(DirStream);
+#endif
+
+*/
+
+/*/
+#if defined(SMACRO_WINDOWS)
+	String_ = g_GlobalConfiguration.usersSettingsDir();
+	String_ += g_ProtectedNetworksDirName;
+	if(Create_) {
+		if(_waccess(String_.c_str(), 0)) _wmkdir(String_.c_str());
+		}
+	String_ += L'\\';
+#else
+	String_ = g_GlobalConfiguration.usersSettingsDir() + g_ProtectedNetworksDirName;
+	if(Create_) {
+		if(access(String_.c_str(), 0)) mkdir(String_.c_str(), ACCESSPERMS);
+		}
+	String_ += '/';
+#endif
+*/
+
 
 // -----------------------------------------------------------------------
 // Processes the folder with the documentation in the HTML format.
