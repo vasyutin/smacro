@@ -22,10 +22,8 @@
 
 #include <iostream>
 #include <set>
-#include <cctype>
 
 #include <assert.h>
-#include <ctype.h>
 
 const int RETCODE_OK = 0;
 const int RETCODE_INVALID_PARAMETERS = 1;
@@ -62,27 +60,6 @@ inline size_t FileNameStringLength(const TFileNameChar *String_)
 #else
 	return strlen(String_);
 #endif
-}
-
-// -----------------------------------------------------------------------
-template <typename _TString>
-void TrimString(_TString &String_) 
-{
-struct THelper {
-	static bool notASpace(typename _TString::value_type Char_) {
-		#if defined(SMACRO_WINDOWS)
-			if(sizeof(Char_) == sizeof(wchar_t))
-				return !iswspace((wint_t)Char_);
-			else
-		#endif				
-		return !std::isspace((int)Char_);
-		}
-	};
-
-// ---
-String_.erase(String_.begin(), std::find_if(String_.begin(), String_.end(), THelper::notASpace));
-String_.erase(std::find_if(String_.rbegin(), String_.rend(), THelper::notASpace).base(), 
-	String_.end());
 }
 
 // -----------------------------------------------------------------------

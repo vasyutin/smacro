@@ -20,6 +20,8 @@
 #include "utils.h"
 
 #include <iostream>
+#include <cctype>
+
 #include <assert.h>
 
 #define DEBUG_OUTPUT
@@ -160,7 +162,14 @@ while(true) {
 		}
 	//
 	Result = processOperator(InputFile, Line, OutputFile, false);
-	if(Result != TResult::OK) return false;
+	if(Result == TResult::WriteError) {
+		std::cerr << "Can't write file: '" << FileNameStringToConsole(Output_) << "'.";
+		return false;
+		}
+	else if(Result != TResult::OK) {
+		// The error message is provided by the callee.
+		return false;
+		}
 	}
 }
 
@@ -186,71 +195,71 @@ if(!Line_.empty()) {
 	}
 }
 
-/*
-	const char *End = String + Length;
-	const char *Start = std::find_if_not((const char*)String, End,
-		[](char Ch_) {return std::isspace(Ch_);});
-
-	if(Start == End || *Start == '#') continue;
-*/
-
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::readNextLine(std::istream &Input_, std::string &Line_)
+TProcessor::TResult TProcessor::readNextLine(std::istream &Input_, std::string &Line_, 
+	const TFileNameString &Output_)
 {
-int Index;
+std::string::const_iterator Index;
 while(true) {
 	if(!std::getline(Input_, Line_)) return TResult::EndOfFile;
-	//
-
-
-	Index = Line_.indexOf(m_NotWhitespaceRegExp);
-	if(Index < 0 || Line_[Index] != '#') {
+	// Check if line starts with #
+	Index = std::find_if_not(Line_.cbegin(), Line_.cend(),
+		[](char Ch_) {return std::isspace((int)Ch_);}
+		);
+	if(Index == Line_.cend() || *Index != '#') {
 		valuesSubstitution(Line_);
 		return TResult::OK;
 		}
-	if(m_CommentOperatorRegExp.indexIn(Line_, Index) == Index) continue;
+	std::smatch Match;
+	if(std::regex_search(Index, Line_.cend(), Match, m_CommentOperatorRegExp) &&
+		!Match.position()) {
+		continue;
+		}
 	break;
 	}
 //
 TResult Result;
-int MatchedLen;
-if(m_IfRegExp.indexIn(Line_, Index) == Index) {
+std::smatch Match;
+if(std::regex_search(Index, Line_.cend(), Match, m_IfRegExp) && !Match.position()) {
 	Result = TResult::OperatorIf;
-	MatchedLen = m_IfRegExp.matchedLength();
 	}
-else if(m_ElifRegExp.indexIn(Line_, Index) == Index) {
+else if(std::regex_search(Index, Line_.cend(), Match, m_ElifRegExp) && !Match.position()) {
 	Result = TResult::OperatorElif;
-	MatchedLen = m_ElifRegExp.matchedLength();
 	}
-else if(m_ElseRegExp.indexIn(Line_, Index) == Index) {
+else if(std::regex_search(Index, Line_.cend(), Match, m_ElseRegExp) && !Match.position()) {
 	Result = TResult::OperatorElse;
-	MatchedLen = m_ElseRegExp.matchedLength();
 	}
-else if(m_EndifRegExp.indexIn(Line_, Index) == Index) {
+else if(std::regex_search(Index, Line_.cend(), Match, m_EndifRegExp) && !Match.position()) {
 	Result = TResult::OperatorEndif;
-	MatchedLen = m_EndifRegExp.matchedLength();
 	}
 else {
 	valuesSubstitution(Line_);
 	return TResult::OK;
 	}
-//
-Line_ = Line_.right(Line_.length() - Index - MatchedLen);
-Line_ = Line_.trimmed();
-while(Line_.endsWith('\\')) {
-	if(Input_.atEnd()) {
+ptrdiff_t MatchedLen = Match[0].length();
+Line_.erase(Index + MatchedLen, Line_.end());
+TrimString(Line_);
+assert(!Line_.empty());
+while(*(Line_.end() - 1) == '\\') {
+	std::string NewLine;
+	if(!std::getline(Input_, NewLine)) {
 		std::cerr << "Line " << m_Line << " ends with '\\' but next string is not present: " <<
-			(const char*)Input_.fileName().toLocal8Bit() << ':' << m_Line;
+			FileNameStringToConsole(Output_) << ':' << m_Line;
 		return TResult::SyntaxError;
 		}
-	QByteArray ByteLine = Input_.readLine();
 	m_Line++;
-	Line_ = Line_ + ' ' + QString::fromUtf8(ByteLine).trimmed();
+	TrimString(NewLine);
+	// Removing '\\'
+	*(Line_.end() - 1) = ' ';
+	Line_ += NewLine;
 	}
 // Removing comments from operator's string
-Index = Line_.indexOf(m_CommentRegExp);
-if(Index >= 0) 
-	Line_ = Line_.left(Index).trimmed();
+if(std::regex_search(Line_.cbegin(), Line_.cend(), Match, m_CommentRegExp)) {
+	Line_.erase(Line_.begin() + Match.position(), Line_.end());
+	TrimStringRight(Line_);
+	}
+
+??
 
 if(Result == TResult::OperatorEndif || Result == TResult::OperatorElse) {
 	if(!Line_.isEmpty()) {
@@ -266,21 +275,19 @@ else if(Result == TResult::OperatorIf || Result == TResult::OperatorElif) {
 		return TResult::SyntaxError;
 		}
 	}
+*/
 return Result;
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::processLinesTillNextKeyword(QFile &Input_, QString &Line_, 
-	QFile &Output_, bool Skip_) 
+TProcessor::TResult TProcessor::processLinesTillNextKeyword(std::istream &Input_, 
+	std::string &Line_, std::ostream &Output_, bool Skip_) 
 {
 while(true) {
 	TResult Result = readNextLine(Input_, Line_);
 	if(Result == TResult::OK) {
 		if(!Skip_) {
-			QByteArray Converted = Line_.toUtf8();
-			if(Output_.write(Converted) != Converted.size()) {
-				std::cerr << "Error writing file '" << 
-					(const char*)Output_.fileName().toLocal8Bit() << "'.";
+			if(!Output_.write(Line_.c_str(), Line_.size())) {
 				return TResult::WriteError;
 				}
 			}
@@ -296,9 +303,13 @@ return TResult::OK;
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::processOperator(QFile &Input_, QString &Line_, QFile &Output_,
-	bool Skip_)
+TProcessor::TResult TProcessor::processOperator(std::istream &Input_, std::string &Line_, 
+	std::ostream &Output_, bool Skip_)
 {
+return TResult::OK;
+
+
+/*
 bool ValidExpressionFound;
 if(!calculateExp(Line_, ValidExpressionFound, Input_)) return TResult::SyntaxError;
 //
@@ -356,11 +367,13 @@ while(true) {
 		assert(!"Return value is not expected.");
 		}
 	}
+*/
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::calculateExp(const QString &Line_, bool &Result_, const QFile &Input_)
+bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, const std::string &Input_)
 {
+/*
 struct TLexeme {
 	TLexemeType Type;
 	QString Value;
@@ -825,5 +838,6 @@ if(!THelper::runVM(Values, Result_)) {
 	std::cout << "Result: " << (Result_? "true": "false") << "\n";
 #endif
 
+*/
 return true;
 }

@@ -21,6 +21,9 @@
 #include "globals.h"
 
 #include <vector>
+#include <cctype>
+
+#include <ctype.h>
 
 // -----------------------------------------------------------------------
 bool FolderExists(const TFileNameChar *Folder_);
@@ -30,6 +33,27 @@ bool FolderEntries(const TFileNameChar *Folder_, std::vector<TFileNameString> &F
 bool FileExists(const TFileNameChar *File_);
 bool RemoveFile(const TFileNameChar *File_);
 bool CopyFile(const TFileNameChar *Src_, const TFileNameChar *Dst_);
+
+// -----------------------------------------------------------------------
+template <typename _TString>
+void TrimString(_TString &String_) 
+{
+struct THelper {
+	static bool notASpace(typename _TString::value_type Char_) {
+		#if defined(SMACRO_WINDOWS)
+			if(sizeof(Char_) == sizeof(wchar_t))
+				return !iswspace((wint_t)Char_);
+			else
+		#endif				
+		return !std::isspace((int)Char_);
+		}
+	};
+
+// ---
+String_.erase(String_.begin(), std::find_if(String_.begin(), String_.end(), THelper::notASpace));
+String_.erase(std::find_if(String_.rbegin(), String_.rend(), THelper::notASpace).base(), 
+	String_.end());
+}
 
 // -----------------------------------------------------------------------
 #if defined(SMACRO_WINDOWS)

@@ -46,7 +46,7 @@ private:
 	const TExcludePatterns &m_ExcludePatterns;
 	unsigned m_Line;
 	//
-	TResult readNextLine(std::istream &Input_, std::string &Line_);
+	TResult readNextLine(std::istream &Input_, std::string &Line_, const TFileNameString &Output_);
 	TResult processOperator(std::istream &Input_, std::string &Line_, std::ostream &Output_, 
 		bool Skip_);
 	static bool isOperator(TResult Result_);
