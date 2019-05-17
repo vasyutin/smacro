@@ -17,15 +17,12 @@
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "processor.h"
+#include "utils.h"
 
 #include <iostream>
 #include <assert.h>
 
-#include <QFile>
-#include <QDir>
-#include <QStack>
-
-//#define DEBUG_OUTPUT
+#define DEBUG_OUTPUT
 
 // -----------------------------------------------------------------------
 TProcessor::TProcessor(const TParameters &Parameters_): 
@@ -42,67 +39,66 @@ TProcessor::TProcessor(const TParameters &Parameters_):
 {
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::String;
-m_LexemeRegExps.back().RegExp.setPattern("[\"]([^\"]*)[\"]");
+m_LexemeRegExps.back().RegExp.assign("[\"]([^\"]*)[\"]");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Variable;
-m_LexemeRegExps.back().RegExp.setPattern("[A-Za-z_][A-Za-z_0-9]*");
+m_LexemeRegExps.back().RegExp.assign("[A-Za-z_][A-Za-z_0-9]*");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Defined;
-m_LexemeRegExps.back().RegExp.setPattern("defined\\s*[(]\\s*([A-Za-z_][A-Za-z_0-9]*)\\s*[)]");
+m_LexemeRegExps.back().RegExp.assign("defined\\s*[(]\\s*([A-Za-z_][A-Za-z_0-9]*)\\s*[)]");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Not;
-m_LexemeRegExps.back().RegExp.setPattern("!");
+m_LexemeRegExps.back().RegExp.assign("!");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Eq;
-m_LexemeRegExps.back().RegExp.setPattern("==");
+m_LexemeRegExps.back().RegExp.assign("==");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Neq;
-m_LexemeRegExps.back().RegExp.setPattern("!=");
+m_LexemeRegExps.back().RegExp.assign("!=");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Less;
-m_LexemeRegExps.back().RegExp.setPattern("<");
+m_LexemeRegExps.back().RegExp.assign("<");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Greater;
-m_LexemeRegExps.back().RegExp.setPattern(">");
+m_LexemeRegExps.back().RegExp.assign(">");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::LessOrEqual;
-m_LexemeRegExps.back().RegExp.setPattern("<=");
+m_LexemeRegExps.back().RegExp.assign("<=");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::GreaterOrEqual;
-m_LexemeRegExps.back().RegExp.setPattern(">");
+m_LexemeRegExps.back().RegExp.assign(">");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::OpenBracket;
-m_LexemeRegExps.back().RegExp.setPattern("[(]");
+m_LexemeRegExps.back().RegExp.assign("[(]");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::CloseBracket;
-m_LexemeRegExps.back().RegExp.setPattern("[)]");
+m_LexemeRegExps.back().RegExp.assign("[)]");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::And;
-m_LexemeRegExps.back().RegExp.setPattern("&&");
+m_LexemeRegExps.back().RegExp.assign("&&");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Or;
-m_LexemeRegExps.back().RegExp.setPattern("||");
+m_LexemeRegExps.back().RegExp.assign("||");
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::isExcluded(const QString &FileName_) const
+bool TProcessor::isExcluded(const TFileNameString &FileName_) const
 {
-for(TExcludePatterns::const_iterator p_it = m_ExcludePatterns.begin(); 
-	p_it != m_ExcludePatterns.end(); ++p_it) {
-	if(p_it->exactMatch(FileName_)) return true;
+for(auto p_it = m_ExcludePatterns.begin(); p_it != m_ExcludePatterns.end(); ++p_it) {
+	if(std::regex_match(FileName_, *p_it)) return true;
 	}
 return false;
 }
@@ -115,28 +111,37 @@ return Result_ == TResult::OperatorIf || Result_ == TResult::OperatorElif ||
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::processFile(const QString &Input_, const QString &Output_)
+bool TProcessor::processFile(const TFileNameString &Input_, const TFileNameString &Output_)
 {
-QFile InputFile(Input_);
-if(!InputFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-	std::cerr << "Can't open file '" << (const char*)Input_.toLocal8Bit() << "'.";
+#if defined(__MINGW32__) || defined(__MINGW64__)
+	std::string Local8InputFileName = WStringToWindowsLocal(Input_);
+	std::ifstream InputFile(Local8InputFileName);
+#else
+	std::ifstream InputFile(Input_);
+#endif
+if(!InputFile) {
+	std::cerr << "Can't open input file: '" << FileNameStringToConsole(Input_) << "'.";
 	return false;
 	}
-//
-QFile OutputFile(Output_);
-if(!OutputFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-	std::cerr << "Can't open output file '" << (const char*)Output_.toLocal8Bit() << "'.";
+
+#if defined(__MINGW32__) || defined(__MINGW64__)
+	std::string Local8OutputFileName = WStringToWindowsLocal(Output_);
+	std::ofstream OutputFile(Local8OutputFileName);
+#else
+	std::ofstream OutputFile(Output_);
+#endif
+if(!OutputFile) {
+	std::cerr << "Can't open output file: '" << FileNameStringToConsole(Output_) << "'.";
 	return false;
 	}
 //
 m_Line = 0;
-QString Line;
+std::string Line;
 while(true) {
 	TResult Result = readNextLine(InputFile, Line);
 	if(Result == TResult::OK) {
-		QByteArray Converted = Line.toUtf8();
-		if(OutputFile.write(Converted) != Converted.size()) {
-			std::cerr << "Error writing file '" << (const char*)Output_.toLocal8Bit() << "'.";
+		if(!OutputFile.write(Line.c_str(), Line.size())) {
+			std::cerr << "Error writing file '" << FileNameStringToConsole(Output_) << "'.";
 			return false;
 			}
 		continue;
@@ -149,7 +154,7 @@ while(true) {
 	assert(isOperator(Result));
 	// There can be only #if
 	if(Result != TResult::OperatorIf) {
-		std::cerr << "Expected #if: " << (const char*)Output_.toLocal8Bit() << ':' << m_Line <<
+		std::cerr << "Expected #if: " << FileNameStringToConsole(Input_) << ':' << m_Line <<
 			".";
 		return false;
 		}
@@ -160,37 +165,44 @@ while(true) {
 }
 
 // -----------------------------------------------------------------------
-void TProcessor::valuesSubstitution(QString &Line_)
+void TProcessor::valuesSubstitution(std::string &Line_)
 {
 // Replacing variables
-if(!Line_.isEmpty()) {
-	int StartPos = 0;
-	while((StartPos = m_VariableRegExp.indexIn(Line_, StartPos)) >= 0) {
-		QString Variable = m_VariableRegExp.cap(1);
-		int StringFoundSize = m_VariableRegExp.cap(0).size();
+if(!Line_.empty()) {
+	size_t StartPos = 0;
+	std::cmatch Match;
+	while(std::regex_search(Line_.c_str() + StartPos, Match, m_VariableRegExp)) {
+		std::string Variable(Match[1].first, Match[1].second);
 		TVariables::const_iterator it = m_Variables.find(Variable);
 		if(it == m_Variables.end()) {
-			StartPos += StringFoundSize;
+			StartPos += Variable.size();
 			}
 		else {
-			Line_.replace(StartPos, StringFoundSize, it.value());
-			StartPos += it.value().size();
+			Line_.replace(Match[0].first - Line_.c_str(), Match[0].second - Match[0].first, 
+				it->second);
+			StartPos += it->second.size();
 			}
 		}
 	}
 }
 
+/*
+	const char *End = String + Length;
+	const char *Start = std::find_if_not((const char*)String, End,
+		[](char Ch_) {return std::isspace(Ch_);});
+
+	if(Start == End || *Start == '#') continue;
+*/
+
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::readNextLine(QFile &Input_, QString &Line_)
+TProcessor::TResult TProcessor::readNextLine(std::istream &Input_, std::string &Line_)
 {
 int Index;
 while(true) {
-	if(Input_.atEnd()) return TResult::EndOfFile;
-
-	QByteArray ByteLine = Input_.readLine();
-	m_Line++;
-	Line_ = QString::fromUtf8(ByteLine);
+	if(!std::getline(Input_, Line_)) return TResult::EndOfFile;
 	//
+
+
 	Index = Line_.indexOf(m_NotWhitespaceRegExp);
 	if(Index < 0 || Line_[Index] != '#') {
 		valuesSubstitution(Line_);

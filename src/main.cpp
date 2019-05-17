@@ -251,8 +251,7 @@ for(int i = 1; i < Argc_; ++i) {
 		break;
 	case TFileNameChar('e'):
 		if(!ParseMasks(Argument + 2, Parameters_.ExcludePatterns)) {
-			std::cerr << "Invalid file mask found: '" << FileNameStringToConsole(Argument + 2) << 
-				"'.";
+			// The error message is provided by the callee.
 			return false;
 			}
 		break;
