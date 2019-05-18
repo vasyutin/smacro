@@ -46,13 +46,13 @@ private:
 	const TExcludePatterns &m_ExcludePatterns;
 	unsigned m_Line;
 	//
-	TResult readNextLine(std::istream &Input_, std::string &Line_, const TFileNameString &Output_);
+	TResult readNextLine(std::istream &Input_, std::string &Line_, const TFileNameString &InputFile_);
 	TResult processOperator(std::istream &Input_, std::string &Line_, std::ostream &Output_, 
 		bool Skip_);
 	static bool isOperator(TResult Result_);
 	void valuesSubstitution(std::string &Line_);
-	TResult processLinesTillNextKeyword(std::istream &Input_, std::string &Line_, 
-		std::ostream &Output_, bool Skip_);
+	TResult processLinesTillNextKeyword(std::istream &Input_, const TFileNameString &InputFile_, 
+		std::string &Line_, std::ostream &Output_, bool Skip_);
 
 	std::regex m_NotWhitespaceRegExp, m_VariableRegExp,
 		m_IfRegExp, m_ElifRegExp, m_ElseRegExp, m_EndifRegExp, m_CommentOperatorRegExp,
@@ -83,5 +83,5 @@ private:
 	std::vector<TLexemeRegExp> m_LexemeRegExps;
 
 	// Input_ is necessary for obtaining an input file name
-	bool calculateExp(const std::string &Line_, bool &Result_, const std::string &InputFile_);
+	bool calculateExp(const std::string &Line_, bool &Result_, std::istream &InputFile_);
 	};

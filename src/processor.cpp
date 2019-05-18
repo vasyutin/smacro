@@ -140,7 +140,7 @@ if(!OutputFile) {
 m_Line = 0;
 std::string Line;
 while(true) {
-	TResult Result = readNextLine(InputFile, Line);
+	TResult Result = readNextLine(InputFile, Line, Input_);
 	if(Result == TResult::OK) {
 		if(!OutputFile.write(Line.c_str(), Line.size())) {
 			std::cerr << "Error writing file '" << FileNameStringToConsole(Output_) << "'.";
@@ -197,7 +197,7 @@ if(!Line_.empty()) {
 
 // -----------------------------------------------------------------------
 TProcessor::TResult TProcessor::readNextLine(std::istream &Input_, std::string &Line_, 
-	const TFileNameString &Output_)
+	const TFileNameString &InputFile_)
 {
 std::string::const_iterator Index;
 while(true) {
@@ -244,7 +244,7 @@ while(*(Line_.end() - 1) == '\\') {
 	std::string NewLine;
 	if(!std::getline(Input_, NewLine)) {
 		std::cerr << "Line " << m_Line << " ends with '\\' but next string is not present: " <<
-			FileNameStringToConsole(Output_) << ':' << m_Line;
+			FileNameStringToConsole(InputFile_) << ':' << m_Line;
 		return TResult::SyntaxError;
 		}
 	m_Line++;
@@ -256,26 +256,22 @@ while(*(Line_.end() - 1) == '\\') {
 // Removing comments from operator's string
 if(std::regex_search(Line_.cbegin(), Line_.cend(), Match, m_CommentRegExp)) {
 	Line_.erase(Line_.begin() + Match.position(), Line_.end());
-	TrimStringRight(Line_);
+	TrimString(Line_);
 	}
-
-??
-
 if(Result == TResult::OperatorEndif || Result == TResult::OperatorElse) {
-	if(!Line_.isEmpty()) {
+	if(!Line_.empty()) {
 		std::cerr << "Unexpected symbols after keyword: " <<
-			(const char*)Input_.fileName().toLocal8Bit() << ':' << m_Line;
+			FileNameStringToConsole(InputFile_) << ':' << m_Line;
 		return TResult::SyntaxError;
 		}
 	}
 else if(Result == TResult::OperatorIf || Result == TResult::OperatorElif) {
-	if(Line_.isEmpty()) {
-		std::cerr << "Expression expected after keyword: " <<
-			(const char*)Input_.fileName().toLocal8Bit() << ':' << m_Line;
+	if(Line_.empty()) {
+		std::cerr << "Expression expected after keyword: " << 
+			FileNameStringToConsole(InputFile_) << ':' << m_Line;
 		return TResult::SyntaxError;
 		}
 	}
-*/
 return Result;
 }
 
@@ -306,10 +302,6 @@ return TResult::OK;
 TProcessor::TResult TProcessor::processOperator(std::istream &Input_, std::string &Line_, 
 	std::ostream &Output_, bool Skip_)
 {
-return TResult::OK;
-
-
-/*
 bool ValidExpressionFound;
 if(!calculateExp(Line_, ValidExpressionFound, Input_)) return TResult::SyntaxError;
 //
@@ -367,11 +359,10 @@ while(true) {
 		assert(!"Return value is not expected.");
 		}
 	}
-*/
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, const std::string &Input_)
+bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, std::istream &Input_)
 {
 /*
 struct TLexeme {
