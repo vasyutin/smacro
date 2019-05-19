@@ -88,7 +88,7 @@ Files_.clear();
 		}
 	closedir(DirStream);
 #endif
-return false;
+return true;
 }
 
 // -----------------------------------------------------------------------
@@ -114,7 +114,7 @@ bool RemoveFile(const TFileNameChar *File_)
 }
 
 // -----------------------------------------------------------------------
-bool CopyFile(const TFileNameChar *Src_, const TFileNameChar *Dst_)
+bool _CopyFile(const TFileNameChar *Src_, const TFileNameChar *Dst_)
 {
 #if defined(SMACRO_WINDOWS)
 	return ::CopyFile(Src_, Dst_, TRUE) == TRUE;

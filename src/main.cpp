@@ -84,7 +84,7 @@ struct TProcessor {
 			return true;
 			}
 		if(std::regex_match(WLine_, Match, m_VariableWithoutValue)) {
-			m_Parameters.Variables.insert(std::make_pair(Match[1], std::string()));
+			m_Parameters.Variables.insert(std::make_pair(Match[0], std::string()));
 			return true;
 			}
 		return false;
@@ -178,7 +178,7 @@ std::set<TFileNameString> Patterns;
 
 const TFileNameChar *End = Masks_ + FileNameStringLength(Masks_);
 while(true) {
-	const TFileNameChar *Delim = std::find(Masks_, End, TFileNameChar(' '));
+	const TFileNameChar *Delim = std::find(Masks_, End, TFileNameChar(';'));
 	if(Delim == Masks_) {
 		Masks_++;
 		continue;
@@ -274,13 +274,18 @@ for(auto it = Files.begin(); it != Files.end(); ++it) {
 			}
 		}
 	bool Result = Processor_.isExcluded(*it)? 
-		CopyFile(InputFile.c_str(), OutputFile.c_str()):
+		_CopyFile(InputFile.c_str(), OutputFile.c_str()):
 		Processor_.processFile(InputFile, OutputFile);
 	//
 	if(!Result) {
 		std::cerr << "Can't write file '" << FileNameStringToConsole(OutputFile) << "'.";
 		return false;
 		}
+	}
+
+for(auto it = Folders.begin(); it != Folders.end(); ++it) {
+	if(!ProcessFolder(Input_ + *it + DIR_SEPARATOR, Output_ + *it + DIR_SEPARATOR, Processor_))
+		return false;
 	}
 return true;
 }

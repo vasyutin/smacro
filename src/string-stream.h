@@ -20,29 +20,27 @@
 */
 #include <string>
 
-#ifdef _MSC_VER
-   #if defined(_WIN64) || defined(_WIN32)
-      #ifndef SMACRO_WINDOWS
-         #define SMACRO_WINDOWS
-		#endif
-   #endif
-#elif defined(__MINGW32__) || defined(__MINGW64__)
-   #ifndef SMACRO_WINDOWS
-      #define SMACRO_WINDOWS
-	#endif
-#elif defined(__linux__) || defined(__linux)
-	#ifndef SMACRO_LINUX
-		#define SMACRO_LINUX
-	#endif
-#endif
+// -----------------------------------------------------------------------
+template <typename _Type>
+std::string& operator<<(std::string &String_, const _Type &Value_) 
+{
+return (String_ += std::to_string(Value_));
+}
 
-#if defined(SMACRO_WINDOWS)
-	typedef wchar_t TFileNameChar;
-	typedef std::wstring TFileNameString;
-	#define DIR_SEPARATOR L'\\'
-#else
-	typedef char TFileNameChar;
-	typedef std::string TFileNameString;
-	#define DIR_SEPARATOR '/'
-#endif
+// -----------------------------------------------------------------------
+inline std::string& operator<<(std::string &String_, const std::string &Value_) 
+{
+return String_.append(Value_);
+}
 
+// -----------------------------------------------------------------------
+inline std::string& operator<<(std::string &String_, const char *Value_)
+{
+return String_.append(Value_);
+}
+
+// -----------------------------------------------------------------------
+inline std::string& operator<<(std::string &String_, const char Value_)
+{
+return String_ += Value_;
+}

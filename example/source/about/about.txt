@@ -1,3 +1,5 @@
+The following macro will not have to be changed if exclude filemask '*.txt' was specified in the command line
+
 ${PROGRAM_NAME} example help
 
 https://github.com/vasyutin/hpro

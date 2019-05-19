@@ -18,19 +18,19 @@
 */
 #include "processor.h"
 #include "utils.h"
+#include "string-stream.h"
 
 #include <iostream>
 #include <cctype>
 
 #include <assert.h>
 
-#define DEBUG_OUTPUT
+//#define DEBUG_OUTPUT
 
 // -----------------------------------------------------------------------
 TProcessor::TProcessor(const TParameters &Parameters_): 
 	m_Variables(Parameters_.Variables),
 	m_ExcludePatterns(Parameters_.ExcludePatterns),
-	m_NotWhitespaceRegExp("\\S"),
 	m_VariableRegExp("[$][{]([A-Za-z0-9_]+)[}]"),
 	m_IfRegExp("#if\\s+"), 
 	m_ElifRegExp("#elif\\s+"), 
@@ -113,36 +113,57 @@ return Result_ == TResult::OperatorIf || Result_ == TResult::OperatorElif ||
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::processFile(const TFileNameString &Input_, const TFileNameString &Output_)
+TProcessor::TProcessData::TProcessData(const TFileNameString &InputFile_, 
+	const TFileNameString &OutputFile_):
+	InputFile(InputFile_), 
+	OutputFile(OutputFile_)
 {
 #if defined(__MINGW32__) || defined(__MINGW64__)
-	std::string Local8InputFileName = WStringToWindowsLocal(Input_);
-	std::ifstream InputFile(Local8InputFileName);
+	Input.open(WStringToWindowsLocal(InputFile_), std::ios::binary);
 #else
-	std::ifstream InputFile(Input_);
+	Input.open(InputFile_, std::ios::binary);
 #endif
-if(!InputFile) {
-	std::cerr << "Can't open input file: '" << FileNameStringToConsole(Input_) << "'.";
-	return false;
+if(!Input) {
+	ErrorMessage = "Can't open input file: '";
+	ErrorMessage += FileNameStringToConsole(InputFile_);
+	ErrorMessage += "'.";
+	return;
 	}
 
 #if defined(__MINGW32__) || defined(__MINGW64__)
-	std::string Local8OutputFileName = WStringToWindowsLocal(Output_);
-	std::ofstream OutputFile(Local8OutputFileName);
+	Output.open(WStringToWindowsLocal(OutputFile_), std::ios::binary);
 #else
-	std::ofstream OutputFile(Output_);
+	Output.open(OutputFile_, std::ios::binary);
 #endif
-if(!OutputFile) {
-	std::cerr << "Can't open output file: '" << FileNameStringToConsole(Output_) << "'.";
+if(!Output) {
+	ErrorMessage = "Can't open output file: '";
+	ErrorMessage += FileNameStringToConsole(OutputFile_);
+	ErrorMessage += "'.";
+	return;
+	}
+}
+
+// -----------------------------------------------------------------------
+bool TProcessor::TProcessData::initialized() const
+{
+return Input.is_open() && Output.is_open();
+}
+
+// -----------------------------------------------------------------------
+bool TProcessor::processFile(const TFileNameString &Input_, const TFileNameString &Output_)
+{
+TProcessData Data(Input_, Output_);
+if(!Data.initialized()) {
+	std::cerr << Data.errorMessage();
 	return false;
 	}
 //
-m_Line = 0;
+Data.LineNo = 0;
 std::string Line;
 while(true) {
-	TResult Result = readNextLine(InputFile, Line, Input_);
+	TResult Result = readNextLine(Data, Line);
 	if(Result == TResult::OK) {
-		if(!OutputFile.write(Line.c_str(), Line.size())) {
+		if(!Data.Output.write(Line.c_str(), Line.size())) {
 			std::cerr << "Error writing file '" << FileNameStringToConsole(Output_) << "'.";
 			return false;
 			}
@@ -156,18 +177,18 @@ while(true) {
 	assert(isOperator(Result));
 	// There can be only #if
 	if(Result != TResult::OperatorIf) {
-		std::cerr << "Expected #if: " << FileNameStringToConsole(Input_) << ':' << m_Line <<
+		std::cerr << "Expected #if: " << FileNameStringToConsole(Input_) << ':' << Data.LineNo <<
 			".";
 		return false;
 		}
 	//
-	Result = processOperator(InputFile, Line, OutputFile, false);
+	Result = processOperator(Data, Line, false);
 	if(Result == TResult::WriteError) {
 		std::cerr << "Can't write file: '" << FileNameStringToConsole(Output_) << "'.";
 		return false;
 		}
 	else if(Result != TResult::OK) {
-		// The error message is provided by the callee.
+		std::cerr << Data.errorMessage();
 		return false;
 		}
 	}
@@ -196,16 +217,20 @@ if(!Line_.empty()) {
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::readNextLine(std::istream &Input_, std::string &Line_, 
-	const TFileNameString &InputFile_)
+std::string::const_iterator TProcessor::firstNonSpace(std::string::const_iterator &Begin_, 
+		std::string::const_iterator &End_)
+{
+return std::find_if_not(Begin_, End_, [](char Ch_) {return std::isspace((int)Ch_);});
+}
+
+// -----------------------------------------------------------------------
+TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &Line_)
 {
 std::string::const_iterator Index;
 while(true) {
-	if(!std::getline(Input_, Line_)) return TResult::EndOfFile;
+	if(!std::getline(Data_.Input, Line_)) return TResult::EndOfFile;
 	// Check if line starts with #
-	Index = std::find_if_not(Line_.cbegin(), Line_.cend(),
-		[](char Ch_) {return std::isspace((int)Ch_);}
-		);
+	Index = firstNonSpace(Line_.cbegin(), Line_.cend());
 	if(Index == Line_.cend() || *Index != '#') {
 		valuesSubstitution(Line_);
 		return TResult::OK;
@@ -236,18 +261,19 @@ else {
 	valuesSubstitution(Line_);
 	return TResult::OK;
 	}
-ptrdiff_t MatchedLen = Match[0].length();
-Line_.erase(Index + MatchedLen, Line_.end());
+ptrdiff_t MatchedLen = Match.length();
+Line_.erase(Line_.begin(), Index + MatchedLen);
 TrimString(Line_);
-assert(!Line_.empty());
-while(*(Line_.end() - 1) == '\\') {
+
+while(!Line_.empty() && *(Line_.end() - 1) == '\\') {
 	std::string NewLine;
-	if(!std::getline(Input_, NewLine)) {
-		std::cerr << "Line " << m_Line << " ends with '\\' but next string is not present: " <<
-			FileNameStringToConsole(InputFile_) << ':' << m_Line;
+	if(!std::getline(Data_.Input, NewLine)) {
+		Data_.ErrorMessage  << "Line " << Data_.LineNo << 
+			" ends with '\\' but next string is not present: " << 
+			FileNameStringToConsole(Data_.InputFile) << ':' << std::to_string(Data_.LineNo);
 		return TResult::SyntaxError;
 		}
-	m_Line++;
+	Data_.LineNo++;
 	TrimString(NewLine);
 	// Removing '\\'
 	*(Line_.end() - 1) = ' ';
@@ -260,15 +286,15 @@ if(std::regex_search(Line_.cbegin(), Line_.cend(), Match, m_CommentRegExp)) {
 	}
 if(Result == TResult::OperatorEndif || Result == TResult::OperatorElse) {
 	if(!Line_.empty()) {
-		std::cerr << "Unexpected symbols after keyword: " <<
-			FileNameStringToConsole(InputFile_) << ':' << m_Line;
+		Data_.ErrorMessage << "Unexpected symbols after keyword: " <<
+			FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
 		return TResult::SyntaxError;
 		}
 	}
 else if(Result == TResult::OperatorIf || Result == TResult::OperatorElif) {
 	if(Line_.empty()) {
-		std::cerr << "Expression expected after keyword: " << 
-			FileNameStringToConsole(InputFile_) << ':' << m_Line;
+		Data_.ErrorMessage << "Expression expected after keyword: " << 
+			FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
 		return TResult::SyntaxError;
 		}
 	}
@@ -276,14 +302,14 @@ return Result;
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::processLinesTillNextKeyword(std::istream &Input_, 
-	std::string &Line_, std::ostream &Output_, bool Skip_) 
+TProcessor::TResult TProcessor::processLinesTillNextKeyword(TProcessData &Data_, 
+	std::string &Line_, bool Skip_) 
 {
 while(true) {
-	TResult Result = readNextLine(Input_, Line_);
+	TResult Result = readNextLine(Data_, Line_);
 	if(Result == TResult::OK) {
 		if(!Skip_) {
-			if(!Output_.write(Line_.c_str(), Line_.size())) {
+			if(!Data_.Output.write(Line_.c_str(), Line_.size())) {
 				return TResult::WriteError;
 				}
 			}
@@ -299,19 +325,18 @@ return TResult::OK;
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::processOperator(std::istream &Input_, std::string &Line_, 
-	std::ostream &Output_, bool Skip_)
+TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string &Line_, 
+	bool Skip_)
 {
 bool ValidExpressionFound;
-if(!calculateExp(Line_, ValidExpressionFound, Input_)) return TResult::SyntaxError;
+if(!calculateExp(Line_, ValidExpressionFound, Data_)) return TResult::SyntaxError;
 //
 bool ExpectiongEndifOnly = false;
-TResult Result = processLinesTillNextKeyword(Input_, Line_, Output_, 
-	Skip_? true: (!ValidExpressionFound));
+TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: (!ValidExpressionFound));
 while(true) {
 	if(Result == TResult::EndOfFile) {
-		std::cerr << "Expected #endif: " << (const char*)Input_.fileName().toLocal8Bit() <<
-			':' << m_Line;
+		Data_.ErrorMessage << "Expected #endif: " << FileNameStringToConsole(Data_.InputFile) << 
+			':' << Data_.LineNo;
 		return TResult::SyntaxError;
 		}
 	else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
@@ -319,36 +344,33 @@ while(true) {
 		
 	// Normal results
 	else if(Result == TResult::OperatorIf) {
-		Result = processOperator(Input_, Line_, Output_, Skip_? true: (!ValidExpressionFound));
+		Result = processOperator(Data_, Line_, Skip_? true: (!ValidExpressionFound));
 		if(Result != TResult::OK) return Result;
-		Result = processLinesTillNextKeyword(Input_, Line_, Output_, 
-			Skip_? true: (!ValidExpressionFound));
+		Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: (!ValidExpressionFound));
 		}
 	else if(Result == TResult::OperatorElif) {
 		if(ExpectiongEndifOnly) {
-			std::cerr << "Unexpected #elif: " << (const char*)Input_.fileName().toLocal8Bit() <<
-				':' << m_Line;
+			Data_.ErrorMessage << "Unexpected #elif: " << FileNameStringToConsole(Data_.InputFile) 
+				<< ':' << Data_.LineNo;
 			return TResult::SyntaxError;
 			}
 		// Always check the expression to find errors
 		bool ElifExpressionResult;
-		if(!calculateExp(Line_, ElifExpressionResult, Input_)) return TResult::SyntaxError;
+		if(!calculateExp(Line_, ElifExpressionResult, Data_)) return TResult::SyntaxError;
 		//
 		bool SkipThis = Skip_ || ValidExpressionFound;
-		Result = processLinesTillNextKeyword(Input_, Line_, Output_, 
-			SkipThis? true: (!ElifExpressionResult));
+		Result = processLinesTillNextKeyword(Data_, Line_, SkipThis? true: (!ElifExpressionResult));
 		//
 		if(!ValidExpressionFound && ElifExpressionResult) ValidExpressionFound = true;
 		assert(!ExpectiongEndifOnly);
 		}
 	else if(Result == TResult::OperatorElse) {
 		if(ExpectiongEndifOnly) {
-			std::cerr << "Unexpected #else: " << (const char*)Input_.fileName().toLocal8Bit() <<
-				':' << m_Line;
+			Data_.ErrorMessage << "Unexpected #else: " << FileNameStringToConsole(Data_.InputFile) 
+				<< ':' << Data_.LineNo;
 			return TResult::SyntaxError;
 			}
-		Result = processLinesTillNextKeyword(Input_, Line_, Output_, 
-			Skip_? true: ValidExpressionFound);
+		Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: ValidExpressionFound);
 		//
 		ExpectiongEndifOnly = true;
 		}
@@ -362,12 +384,11 @@ while(true) {
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, std::istream &Input_)
+bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, TProcessData &Data_)
 {
-/*
 struct TLexeme {
 	TLexemeType Type;
-	QString Value;
+	std::string Value;
 	};
 //
 enum class TValueType {
@@ -378,26 +399,47 @@ enum class TValueType {
 // Memory cell of the VM
 struct TVMValue {
 	TValueType Type;
-	QString StringValue;
+	std::string StringValue;
 	bool BoolValue;
 	};
 
+// We need direct access to stack's container, thus we have to make own stack
+struct TVMVStack: public std::vector<TVMValue> {
+public:
+	void push(const TVMValue &Value_) {push_back(Value_);}
+	void pop() {pop_back();}
+	TVMValue &top() {return back();}
+	};
+
+// ---
 struct THelper {
-	static bool lexAnalysis(TProcessor &This_, const QString &Line_, 
-		QList<TLexeme> &Lexemes_) {
-		int Index = 0;
+	static bool lexAnalysis(TProcessor &This_, const std::string &Line_, 
+		std::vector<TLexeme> &Lexemes_) {
+		std::string::const_iterator Index = Line_.cbegin();
 		while(true) {
 			// Skip to first non space
-			Index = This_.m_NotWhitespaceRegExp.indexIn(Line_, Index);
-			if(Index < 0) return true;
+			Index = firstNonSpace(Index, Line_.cend());
+			if(Index == Line_.cend()) return true;
 			//
 			auto iMax = This_.m_LexemeRegExps.end();
-			int MaxLen = 0;
+			ptrdiff_t MaxLen = 0;
+			std::smatch Match;
+			std::string Lexeme;
 			for(auto it = This_.m_LexemeRegExps.begin(); it != This_.m_LexemeRegExps.end(); 
 				++it) {
-				if(it->RegExp.indexIn(Line_, Index) != Index) continue;
-				if(it->RegExp.matchedLength() > MaxLen) {
-					MaxLen = it->RegExp.matchedLength();
+				if(!std::regex_search(Index, Line_.cend(), Match, it->RegExp) ||
+					Match.position()) continue;
+				if(Match.length() > MaxLen) {
+					MaxLen = Match.length();
+					if(it->Type == TLexemeType::String || it->Type == TLexemeType::Defined) {
+						Lexeme = Match[1];
+						}
+					else if(it->Type == TLexemeType::Variable) {
+						Lexeme = Match[0];
+						}
+					else {
+						Lexeme.clear();
+						}
 					iMax = it;
 					}
 				}
@@ -405,13 +447,8 @@ struct THelper {
 			//
 			Lexemes_.push_back(TLexeme());
 			Lexemes_.back().Type = iMax->Type;
-			if(iMax->Type == TLexemeType::String || iMax->Type == TLexemeType::Defined) {
-				Lexemes_.back().Value = iMax->RegExp.cap(1);
-				}
-			else if(iMax->Type == TLexemeType::Variable) {
-				Lexemes_.back().Value = iMax->RegExp.cap(0);
-				}
-			Index += iMax->RegExp.matchedLength();
+			Lexemes_.back().Value.swap(Lexeme);
+			Index += MaxLen;
 			}
 		}
 
@@ -421,13 +458,13 @@ struct THelper {
 		Stream_ << "{";
 		switch(Lexeme_.Type) {
 		case TLexemeType::String:
-			Stream_ << "string, " << (const char*)Lexeme_.Value.toLocal8Bit();
+			Stream_ << "string, " << Lexeme_.Value;
 			break;
 		case TLexemeType::Variable:
-			Stream_ << "variable, " << (const char*)Lexeme_.Value.toLocal8Bit();
+			Stream_ << "variable, " << Lexeme_.Value;
 			break;
 		case TLexemeType::Defined:
-			Stream_ << "defined, " << (const char*)Lexeme_.Value.toLocal8Bit();
+			Stream_ << "defined, " << Lexeme_.Value;
 			break;
 		case TLexemeType::Not:
 			Stream_ << "!";
@@ -471,8 +508,8 @@ struct THelper {
 	#endif
 
 	// ---
-	static bool toVMValues(TProcessor &This_, const QList<TLexeme> &Lexemes_, 
-		QList<TVMValue> &Values_) {
+	static bool toVMValues(TProcessor &This_, const std::vector<TLexeme> &Lexemes_, 
+		std::vector<TVMValue> &Values_, TProcessData &Data_) {
 		assert(Values_.empty());
 		for(auto it = Lexemes_.begin(); it != Lexemes_.end(); ++it) {
 			Values_.push_back(TVMValue());
@@ -486,12 +523,12 @@ struct THelper {
 			case TLexemeType::Variable: {
 				TVariables::const_iterator iVar = This_.m_Variables.find(it->Value);
 				if(iVar == This_.m_Variables.end()) {
-					std::cerr << "Undefined variable '" << (const char*)it->Value.toLocal8Bit() <<
-						"'";
+					Data_.ErrorMessage << "Undefined variable '" << 
+						FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
 					return false;
 					}
 				Value.Type = TValueType::String;
-				Value.StringValue = iVar.value();
+				Value.StringValue = iVar->second;
 				}
 				break;
 
@@ -548,7 +585,7 @@ struct THelper {
 	// ---
 	static bool toBool(const TVMValue &Value_) {
 		if(Value_.Type == TValueType::String)
-			return !Value_.StringValue.isEmpty();
+			return !Value_.StringValue.empty();
 		else if(Value_.Type == TValueType::Bool) 
 			return Value_.BoolValue;
 		else {
@@ -558,9 +595,9 @@ struct THelper {
 		}
 
 	// ---
-	static bool toReversePolishNotation(QList<TVMValue> &Values_) {
-		QList<TVMValue> Result;
-		QStack<TVMValue> Stack;
+	static bool toReversePolishNotation(std::vector<TVMValue> &Values_, TProcessData &Data_) {
+		std::vector<TVMValue> Result;
+		TVMVStack Stack;
 		//
 		for(auto it = Values_.begin(); it != Values_.end();) {
 			if(it->Type == TValueType::String || it->Type == TValueType::Bool) {
@@ -571,7 +608,7 @@ struct THelper {
 				}
 			else if(it->Type == TValueType::CloseBracket) {
 				bool Found = false;
-				while(!Stack.isEmpty()) {
+				while(!Stack.empty()) {
 					if(Stack.top().Type == TValueType::OpenBracket) {
 						Found = true;
 						Stack.pop();
@@ -583,12 +620,13 @@ struct THelper {
 						}
 					}
 				if(!Found) {
-					std::cerr << "Open bracket expected in expression";
+					Data_.ErrorMessage << "Open bracket expected in expression" << 
+						FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
 					return false;
 					}
 				}
 			else {
-				if(!Stack.isEmpty()) {
+				if(!Stack.empty()) {
 					// while there is an operator at the top of the operator stack with
 					// greater than or equal to precedence and the operator is left associative:
 					// pop operators from the operator stack, onto the output queue.
@@ -596,7 +634,8 @@ struct THelper {
 					int Precedence = operationPrecedence(it->Type);
 					while(operationPrecedence(Stack.top().Type) >= Precedence) {
 						if(Stack.top().Type == TValueType::OpenBracket) {
-							std::cerr << "Unpaired bracket";
+							Data_.ErrorMessage << "Unpaired bracket" << 
+								FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
 							return false;
 							}
 						Result.push_back(Stack.top());
@@ -608,9 +647,10 @@ struct THelper {
 			it = Values_.erase(it);
 			}
 		//
-		while(!Stack.isEmpty()) {
+		while(!Stack.empty()) {
 			if(Stack.top().Type == TValueType::OpenBracket) {
-				std::cerr << "Unpaired bracket";
+				Data_.ErrorMessage << "Unpaired bracket" << 
+					FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
 				return false;
 				}
 			Result.push_back(Stack.top());
@@ -624,7 +664,7 @@ struct THelper {
 	static void printValue(const TVMValue Value_, std::ostream &Stream_) {
 		switch(Value_.Type) {
 		case TValueType::String:
-			Stream_ << "'" << (const char*)Value_.StringValue.toLocal8Bit() << "'";
+			Stream_ << "'" << Value_.StringValue << "'";
 			break;
 		case TValueType::Bool:
 			Stream_ << (Value_.BoolValue? "true": "false");
@@ -670,7 +710,7 @@ struct THelper {
 	#endif
 
 	// ---
-	static bool binaryOp(TValueType Operation_, QStack<TVMValue> &Stack_) {
+	static bool binaryOp(TValueType Operation_, TVMVStack &Stack_) {
 		if(Stack_.size() < 2) return false;
 		const TVMValue &Right = Stack_.top();
 		TVMValue &Left = *(Stack_.end() - 2);
@@ -737,9 +777,9 @@ struct THelper {
 		}
 
 	// ---
-	static bool runVM(QList<TVMValue> &Values_, bool &Result_) {
-		QStack<TVMValue> Stack;
-		while(!Values_.isEmpty()) {
+	static bool runVM(std::vector<TVMValue> &Values_, bool &Result_) {
+		TVMVStack Stack;
+		while(!Values_.empty()) {
 			const TVMValue &Front = Values_.front();
 			switch(Front.Type) {
 			case TValueType::String: case TValueType::Bool:
@@ -747,7 +787,7 @@ struct THelper {
 				break;
 
 			case TValueType::Not:
-				if(Stack.isEmpty() || !(Stack.top().Type == TValueType::String || 
+				if(Stack.empty() || !(Stack.top().Type == TValueType::String || 
 					Stack.top().Type == TValueType::Bool)) {
 					return false;
 					}
@@ -766,7 +806,7 @@ struct THelper {
 			default:
 				if(!binaryOp(Front.Type, Stack)) return false;
 				}
-			Values_.pop_front();
+			Values_.erase(Values_.begin());
 			}
 		if(Stack.empty() || !isValue(Stack.top())) return false;
 		Result_ = toBool(Stack.top());
@@ -776,15 +816,15 @@ struct THelper {
 	};
 
 //
-QList<TLexeme> Lexemes;
+std::vector<TLexeme> Lexemes;
 if(!THelper::lexAnalysis(*this, Line_, Lexemes)) {
-	std::cerr << "Error in expression: " << (const char*)Input_.fileName().toLocal8Bit() <<
-		':' << m_Line;
+	Data_.ErrorMessage << "Error in expression: " << FileNameStringToConsole(Data_.InputFile) << 
+		':' << Data_.LineNo;
 	return false;
 	}
 if(Lexemes.empty()) {
-	std::cerr << "Expression expected: " << (const char*)Input_.fileName().toLocal8Bit() <<
-		':' << m_Line;
+	Data_.ErrorMessage << "Expression expected: " << FileNameStringToConsole(Data_.InputFile) << 
+		':' << Data_.LineNo;
 	return false;
 	}
 
@@ -797,16 +837,15 @@ if(Lexemes.empty()) {
 	std::cout << "\n";
 #endif
 
-QList<TVMValue> Values;
-if(!THelper::toVMValues(*this, Lexemes, Values) || 
-	!THelper::toReversePolishNotation(Values)) {
-	std::cerr << ": " << (const char*)Input_.fileName().toLocal8Bit() << ':' << m_Line;
+std::vector<TVMValue> Values;
+if(!THelper::toVMValues(*this, Lexemes, Values, Data_) || 
+	!THelper::toReversePolishNotation(Values, Data_)) {
 	return false;
 	}
 
 if(Values.empty()) {
-	std::cerr << "Invalid expression: " << (const char*)Input_.fileName().toLocal8Bit() <<
-		':' << m_Line;
+	Data_.ErrorMessage << "Invalid expression: " << FileNameStringToConsole(Data_.InputFile) << 
+		':' << Data_.LineNo;
 	return false;
 	}
 
@@ -820,8 +859,8 @@ if(Values.empty()) {
 #endif
 
 if(!THelper::runVM(Values, Result_)) {
-	std::cerr << "Invalid expression: " << (const char*)Input_.fileName().toLocal8Bit() <<
-		':' << m_Line;
+	Data_.ErrorMessage << "Invalid expression: " << FileNameStringToConsole(Data_.InputFile) << 
+		':' << Data_.LineNo;
 	return false;
 	}
 
@@ -829,6 +868,5 @@ if(!THelper::runVM(Values, Result_)) {
 	std::cout << "Result: " << (Result_? "true": "false") << "\n";
 #endif
 
-*/
 return true;
 }

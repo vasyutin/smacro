@@ -32,7 +32,8 @@ bool FolderEntries(const TFileNameChar *Folder_, std::vector<TFileNameString> &F
 	std::vector<TFileNameString> &Files_);
 bool FileExists(const TFileNameChar *File_);
 bool RemoveFile(const TFileNameChar *File_);
-bool CopyFile(const TFileNameChar *Src_, const TFileNameChar *Dst_);
+// Due to Windows' substitution problem
+bool _CopyFile(const TFileNameChar *Src_, const TFileNameChar *Dst_);
 
 // -----------------------------------------------------------------------
 template <typename _TString>
