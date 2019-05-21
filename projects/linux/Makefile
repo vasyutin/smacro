@@ -1,9 +1,5 @@
 # Create all necessary folders
-ifeq ($(debug), true)
-	CREATE_FOLDERS:=$(shell mkdir ..\..\build\debug 2> nul && mkdir ..\..\build\debug\obj 2> nul)
-else
-	CREATE_FOLDERS:=$(shell mkdir ..\..\build\release 2> nul && mkdir ..\..\build\release\obj 2> nul)
-endif
+CREATE_FOLDERS:=$(shell mkdir -p ../../build/obj)
 
 #
 CC=gcc
@@ -16,17 +12,14 @@ CXXFLAGS=-std=c++14 $(OPTIMIZE) $(INCLUDES) -Wall -Wextra -Wno-psabi -MMD
 LDLIBS=
 LDFLAGS=
 
-APP_BIN_NAME=smacro.exe
+APP_BIN_NAME=smacro
+APP_BIN=../../build/$(APP_BIN_NAME)
+OBJ_DIR=../../build/obj
 
 #-----------------------------------------------------------------
 ifeq ($(debug), true)
 	OPTIMIZE=-O0 -g3
 	LDFLAGS+=-g3
-	APP_BIN=../../build/debug/$(APP_BIN_NAME)
-	OBJ_DIR=../../build/debug/obj
-else
-	APP_BIN=../../build/release/$(APP_BIN_NAME)
-	OBJ_DIR=../../build/release/obj
 endif
 
 #-----------------------------------------------------------------
@@ -49,9 +42,6 @@ $(OBJ_DIR)/%.o: ../../src/%.cpp
 
 $(APP_BIN): $(APP_OBJS)
 	$(CXX) $(LDFLAGS) -o $(APP_BIN) $(LDLIBS) $(APP_OBJS)
-ifneq ($(debug), true)
-	strip $(APP_BIN)
-endif
 
 app-binary: $(APP_BIN)
 
@@ -63,5 +53,10 @@ DEPENDENCIES=$(APP_OBJS:%.o=%.d)
 -include $(DEPENDENCIES)
 
 clean:
-	del /S /Q ..\..\build\*.* > nul 2> nul
-	for /D %%i in (..\..\build\*.*) do rmdir /S /Q %%i > nul 2> nul
+	rm -rf ../../build/*
+
+install: $(APP_BIN)
+	install --mode 755 -s -t /usr/bin $(APP_BIN)
+
+uninstall:
+	rm -f /usr/bin/$(APP_BIN_NAME)

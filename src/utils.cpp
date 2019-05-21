@@ -21,11 +21,22 @@
 #if defined(SMACRO_WINDOWS)
 	#include <windows.h>
 	#include <Shlobj.h>
+#elif defined(SMACRO_LINUX)
+	#include <sys/stat.h>
+	#include <fcntl.h>
+	#include <unistd.h>
+	#include <dirent.h>
+	#include <string.h>
 #endif
+
+#include <assert.h>
+
+#include <iostream>
 
 // -----------------------------------------------------------------------
 bool FolderExists(const TFileNameChar *Folder_)
 {
+assert(Folder_);
 #if defined(SMACRO_WINDOWS)
 	DWORD Attribs = GetFileAttributesW(Folder_);
 	if(Attribs == INVALID_FILE_ATTRIBUTES || 
@@ -34,15 +45,38 @@ bool FolderExists(const TFileNameChar *Folder_)
 		}
 	return true;
 #else
+	struct stat Stat;
+	if(stat(Folder_, &Stat)) return false;
+	return ((Stat.st_mode & S_IFMT) == S_IFDIR);
 #endif
 }
 
 // -----------------------------------------------------------------------
 bool MakePath(const TFileNameChar *Path_)
 {
+assert(Path_);
 #if defined(SMACRO_WINDOWS)
 	return SHCreateDirectoryExW(NULL, Path_, NULL) == ERROR_SUCCESS;
 #else
+	//mode_t Mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+	mode_t Mode = S_IRWXU | S_IRWXGRP | S_IROTH | S_IXOTH;
+	char *PathCopy = strdup(Path_);
+	if(!PathCopy) return false;
+
+	char *Ptr = PathCopy;
+	while(*Ptr) {
+		Ptr++;
+		while(*Ptr && *Ptr != '/') Ptr++;
+		bool NotEndOfLine = (*Ptr != (char)0);
+		if(NotEndOfLine) *Ptr = (char)0;
+		if(mkdir(PathCopy, Mode) == -1 && errno != EEXIST) {
+			free(PathCopy);
+			return false;
+			}
+		if(NotEndOfLine) *Ptr = '/';
+		}
+	free(PathCopy);
+	return true;
 #endif
 }
 
@@ -94,6 +128,7 @@ return true;
 // -----------------------------------------------------------------------
 bool FileExists(const TFileNameChar *File_)
 {
+assert(File_);
 #if defined(SMACRO_WINDOWS)
 	DWORD Attribs = GetFileAttributesW(File_);
 	if(Attribs == INVALID_FILE_ATTRIBUTES || (Attribs & FILE_ATTRIBUTE_DIRECTORY)) {
@@ -101,24 +136,51 @@ bool FileExists(const TFileNameChar *File_)
 		}
 	return true;
 #else
+	struct stat Stat;
+	if(stat(File_, &Stat)) return false;
+	return ((Stat.st_mode & S_IFMT) != S_IFDIR);
 #endif
 }
 
 // -----------------------------------------------------------------------
 bool RemoveFile(const TFileNameChar *File_)
 {
+assert(File_);
 #if defined(SMACRO_WINDOWS)
 	return (DeleteFileW(File_) == TRUE);
 #else
+	return unlink(File_) == 0;
 #endif
 }
 
 // -----------------------------------------------------------------------
-bool _CopyFile(const TFileNameChar *Src_, const TFileNameChar *Dst_)
+bool DuplicateFile(const TFileNameChar *Src_, const TFileNameChar *Dst_)
 {
+assert(Src_ && Dst_);
 #if defined(SMACRO_WINDOWS)
 	return CopyFileW(Src_, Dst_, TRUE) == TRUE;
 #else
+	std::cerr << "DF\n";
+	int SourceFile = open(Src_, O_RDONLY);
+	if(SourceFile == -1) {std::cerr << "SF error\n"; return false;}
+	int DestFile = open(Dst_, O_WRONLY);
+	if(DestFile == -1) {
+		close(SourceFile);
+		return false;
+		}
+	char Buffer[8 * 1024];
+	bool RetValue = true;
+	std::cerr << "p1\n";
+	while(true) {
+		ssize_t BytesRead = read(SourceFile, Buffer, sizeof(Buffer));
+		if(!BytesRead) break; // EOF
+		else if(BytesRead < 0) {RetValue = false; break;}
+		ssize_t BytesWritten = write(DestFile, Buffer, BytesRead);
+		if(BytesWritten != BytesRead) {RetValue = false; break;}
+		}
+	close(SourceFile);
+	close(DestFile);
+	return RetValue;
 #endif
 }
 

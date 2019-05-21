@@ -178,7 +178,7 @@ std::set<TFileNameString> Patterns;
 
 const TFileNameChar *End = Masks_ + FileNameStringLength(Masks_);
 while(true) {
-	const TFileNameChar *Delim = std::find(Masks_, End, TFileNameChar(';'));
+	const TFileNameChar *Delim = std::find(Masks_, End, TFileNameChar(','));
 	if(Delim == Masks_) {
 		Masks_++;
 		continue;
@@ -269,12 +269,12 @@ for(auto it = Files.begin(); it != Files.end(); ++it) {
 	TFileNameString InputFile(Input_ + *it), OutputFile(Output_ + *it);
 	if(FileExists(OutputFile.c_str())) {
 		if(!RemoveFile(OutputFile.c_str())) {
-			std::cerr << "Can't write file '" << FileNameStringToConsole(OutputFile) << "'.";
+			std::cerr << "Can't delete file '" << FileNameStringToConsole(OutputFile) << "'.";
 			return false;
 			}
 		}
 	bool Result = Processor_.isExcluded(*it)? 
-		_CopyFile(InputFile.c_str(), OutputFile.c_str()):
+		DuplicateFile(InputFile.c_str(), OutputFile.c_str()):
 		Processor_.processFile(InputFile, OutputFile);
 	//
 	if(!Result) {
