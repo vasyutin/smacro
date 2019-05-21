@@ -65,6 +65,7 @@ String_.erase(std::find_if(String_.rbegin(), String_.rend(), THelper::notASpace)
 	#endif
 
 	std::string FileNameStringToConsole(const TFileNameString &Unicode_);
+	TFileNameString AbsolutePath(const TFileNameString &Path_);
 #else
 	#define FileNameStringToConsole(Param_) (Param_)
 #endif // #if defined(SMACRO_WINDOWS)

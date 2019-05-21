@@ -164,4 +164,17 @@ if(CharsCount) {
 	}
 return RetValue;
 }
+
+// -----------------------------------------------------------------------
+TFileNameString AbsolutePath(const TFileNameString &Path_)
+{
+const DWORD MAX_PATH_SIZE = 1024;
+wchar_t APath[MAX_PATH_SIZE];
+
+DWORD RetValue = GetFullPathNameW(Path_.c_str(), MAX_PATH_SIZE, APath, NULL);
+if(!RetValue) return TFileNameString();
+//
+return TFileNameString(APath, APath + RetValue);
+}
+
 #endif

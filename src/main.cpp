@@ -304,10 +304,18 @@ return true;
 #endif
 {
 struct THelper {
-	static void normalizeFolderName(TFileNameString &Value_) {
+	static bool normalizeFolderName(TFileNameString &Value_) {
 		assert(!Value_.empty());
+		#if defined(SMACRO_WINDOWS)
+			Value_ = AbsolutePath(Value_);
+			if(Value_.empty()) {
+				std::cerr << "Path '" << FileNameStringToConsole(Value_) << "' is invalid.";
+				return false;
+				}
+		#endif
 		if(Value_[Value_.size() - 1] != DIR_SEPARATOR)
 			Value_ += DIR_SEPARATOR;
+		return true;
 		}
 	};
 
@@ -329,8 +337,11 @@ if(!ParseParameters(Argc_, (const TFileNameChar**)Argv_, Parameters)) {
 	return RETCODE_INVALID_PARAMETERS;
 	}
 //	
-THelper::normalizeFolderName(Parameters.InputFolder);
-THelper::normalizeFolderName(Parameters.OutputFolder);
+if(!THelper::normalizeFolderName(Parameters.InputFolder) ||
+	!THelper::normalizeFolderName(Parameters.OutputFolder)) {
+	return RETCODE_INVALID_PARAMETERS;
+	}
+
 TProcessor Processor(Parameters);
 if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor))
 	return RETCODE_PROCESS_ERROR;
