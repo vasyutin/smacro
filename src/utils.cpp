@@ -58,8 +58,7 @@ assert(Path_);
 #if defined(SMACRO_WINDOWS)
 	return SHCreateDirectoryExW(NULL, Path_, NULL) == ERROR_SUCCESS;
 #else
-	//mode_t Mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
-	mode_t Mode = S_IRWXU | S_IRWXGRP | S_IROTH | S_IXOTH;
+	const mode_t Mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 	char *PathCopy = strdup(Path_);
 	if(!PathCopy) return false;
 
@@ -160,17 +159,16 @@ assert(Src_ && Dst_);
 #if defined(SMACRO_WINDOWS)
 	return CopyFileW(Src_, Dst_, TRUE) == TRUE;
 #else
-	std::cerr << "DF\n";
+	const mode_t Mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
 	int SourceFile = open(Src_, O_RDONLY);
-	if(SourceFile == -1) {std::cerr << "SF error\n"; return false;}
-	int DestFile = open(Dst_, O_WRONLY);
+	if(SourceFile == -1) return false;
+	int DestFile = open(Dst_, O_CREAT | O_TRUNC | O_WRONLY, Mode);
 	if(DestFile == -1) {
 		close(SourceFile);
 		return false;
 		}
 	char Buffer[8 * 1024];
 	bool RetValue = true;
-	std::cerr << "p1\n";
 	while(true) {
 		ssize_t BytesRead = read(SourceFile, Buffer, sizeof(Buffer));
 		if(!BytesRead) break; // EOF

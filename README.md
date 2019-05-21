@@ -28,7 +28,7 @@ smacro -i../../example/source -o../../build/doc_res -v../../example/config -e*.t
 
 ### Installation
 
-The QNetMap can be build in different ways depending of what build tools you are using. The standard distribution contains projects files for QMake/Qt Creator (for both Windows and Linux) and Visual Studio 2015. It is assumed that you have Qt5 installed and all the necessary build tools like compiler and **qmake** are available.
+The Smacro can be build in different ways depending of what build tools you are using. The standard distribution contains projects files for QMake/Qt Creator (for both Windows and Linux) and Visual Studio 2015. It is assumed that you have Qt5 installed and all the necessary build tools like compiler and **qmake** are available.
 
 #### How to build and install with QMake in Linux
 

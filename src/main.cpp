@@ -32,24 +32,30 @@ const int RETCODE_PROCESS_ERROR = 1;
 // -----------------------------------------------------------------------
 void Usage(void)
 {
-std::cout << "SMACRO. Simple macro processor. Helps prepare documentation. "
-"Written by Sergey Vasyutin.\n"
+std::cout << "SMACRO - simple macro processor. Helps prepare documentation.\n"
+"Written by Sergey Vasyutin (https://github.com/vasyutin/smacro).\n"
 "\n"
 "Usage: smacro <switches>\n"
 "\n"
 "The switches are:\n"
-" -i<input folder> - the folder, containing documentation to process\n"
-" -o<output folder> - the destination folder for the processed documentation\n"
+" -i<input folder> - the folder, containing documentation files to process\n"
+" -o<output folder> - the destination folder for the processed files\n"
 " -v<variables file> - the file, containing values of the variables for the current run.\n"
 "    The text in the file is assumed to be in UTF-8\n"
 " -e<masks> - The masks of filenames to exclude from processing. This files are only\n"
-"    copied to the output folder. The masks are separated by semicolons.\n"
+"    copied to the output folder. The masks are separated by comma.\n"
 "\n"
 "All the files being processed (except the files excluded from the processing with the -e\n"
 "switch) are assumed to be in UTF-8 encoding.\n\n"
 "Example:\n"
+
+#if defined(SMACRO_WINDOWS)
 " smacro -i..\\..\\example\\source -o..\\..\\build\\doc_res "
-"-v..\\..\\example\\config -e*.txt;*.png";
+"-v..\\..\\example\\config -e*.txt,*.png\n";
+#else
+" smacro -i../../example/source -o../../build/doc_res "
+"-v../../example/config -e*.txt,*.png\n";
+#endif
 }
 
 // -----------------------------------------------------------------------

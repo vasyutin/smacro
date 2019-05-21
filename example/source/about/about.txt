@@ -2,4 +2,4 @@ The following macro will not have to be changed if exclude filemask '*.txt' was 
 
 ${PROGRAM_NAME} example help
 
-https://github.com/vasyutin/hpro
+https://github.com/vasyutin/smacro
