@@ -94,6 +94,6 @@ private:
 
 	// Data_ is necessary for obtaining an input file name
 	bool calculateExp(const std::string &Line_, bool &Result_, TProcessData &Data_);
-	static std::string::const_iterator firstNonSpace(std::string::const_iterator &Begin_, 
-		std::string::const_iterator &End_);
+	static std::string::const_iterator firstNonSpace(std::string::const_iterator Begin_, 
+		std::string::const_iterator End_);
 	};

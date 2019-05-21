@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <cctype>
+#include <algorithm>
 
 #include <ctype.h>
 

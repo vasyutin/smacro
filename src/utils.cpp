@@ -117,7 +117,7 @@ bool RemoveFile(const TFileNameChar *File_)
 bool _CopyFile(const TFileNameChar *Src_, const TFileNameChar *Dst_)
 {
 #if defined(SMACRO_WINDOWS)
-	return ::CopyFile(Src_, Dst_, TRUE) == TRUE;
+	return CopyFileW(Src_, Dst_, TRUE) == TRUE;
 #else
 #endif
 }

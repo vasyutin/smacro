@@ -206,7 +206,7 @@ return true;
 }
 
 // -----------------------------------------------------------------------
-bool ParseParameters(int Argc_, TFileNameChar *Argv_[], TParameters &Parameters_)
+bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parameters_)
 {
 for(int i = 1; i < Argc_; ++i) {
 	const TFileNameChar *Argument = Argv_[i];
@@ -323,7 +323,7 @@ struct THelper {
 #endif
 
 TParameters Parameters;
-if(!ParseParameters(Argc_, Argv_, Parameters)) {
+if(!ParseParameters(Argc_, (const TFileNameChar**)Argv_, Parameters)) {
 	std::cerr << '\n' << std::endl;
 	Usage();
 	return RETCODE_INVALID_PARAMETERS;
