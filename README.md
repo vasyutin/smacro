@@ -6,15 +6,15 @@ Simple macro processor. A tool that helps to prepare documentation.
 ```sh
 smacro <switches>
 ```
-The switches are:
-**-i<input folder>** - the folder, containing documentation to process.
-**-o<output folder>** - the destination folder for the processed documentation.
-**-v<variables file>** - the file, containing values of the variables for the current run. The text in the file is assumed to be in UTF-8.
-**-e<masks>** - The masks of filenames to exclude from processing. This files are only copied to the output folder. The masks are separated by semicolons.
+The switches are:\
+**\-i\<input folder\>** - the folder, containing documentation to process.\
+**\-o\<output folder\>** - the destination folder for the processed documentation.\
+**\-v\<variables file\>** - the file, containing values of the variables for the current run. The text in the file is assumed to be in UTF-8.\
+**\-e\<masks\>** - The masks of filenames to exclude from processing. This files are only copied to the output folder. The masks are separated by semicolons.
 
 All the files being processed (except the files excluded from the processing with the **-e** switch) are assumed to be in UTF-8 encoding.
 
-To understand how this program works see **example** folder in the source tree.
+To understand how this program works see **/example** folder in the source tree.
 
 Example of using the program in Windows:
 ```sh
@@ -28,7 +28,7 @@ smacro -i../../example/source -o../../build/doc_res -v../../example/config -e*.t
 
 ### Installation
 
-The Smacro can be build in different ways depending of what build tools you are using. The standard distribution contains projects files for QMake/Qt Creator (for both Windows and Linux) and Visual Studio 2015. It is assumed that you have Qt5 installed and all the necessary build tools like compiler and **qmake** are available.
+The Smacro can be build in different ways depending of what build tools you are using. The standard distribution contains the projects files for QMake/Qt Creator (for both Windows and Linux) and Visual Studio 2015. It is assumed that you have Qt5 installed and all the necessary build tools like compiler and **qmake** are available.
 
 #### How to build and install with QMake in Linux
 
