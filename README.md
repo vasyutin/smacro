@@ -7,65 +7,60 @@ Simple macro processor. A tool that helps to prepare documentation.
 smacro <switches>
 ```
 The switches are:\
-**\-i\<input folder\>** - the folder, containing documentation to process.\
-**\-o\<output folder\>** - the destination folder for the processed documentation.\
-**\-v\<variables file\>** - the file, containing values of the variables for the current run. The text in the file is assumed to be in UTF-8.\
-**\-e\<masks\>** - The masks of filenames to exclude from processing. This files are only copied to the output folder. The masks are separated by semicolons.
+*\-i\<input folder\>* - the folder, containing documentation to process.\
+*\-o\<output folder\>* - the destination folder for the processed documentation.\
+*\-v\<variables file\>* - the file, containing values of the variables for the current run. The text in the file is assumed to be in UTF-8.\
+*\-e\<masks\>* - the masks of filenames to exclude from processing. This files are only copied to the output folder. The masks are separated by commas.
 
-All the files being processed (except the files excluded from the processing with the **-e** switch) are assumed to be in UTF-8 encoding.
+All the files being processed (except the files excluded from the processing with the *-e* switch) are assumed to be in UTF-8 encoding.
 
-To understand how this program works see **/example** folder in the source tree.
+To understand how this program works see */example* folder in the source tree.
 
 Example of using the program in Windows:
 ```sh
 smacro -i..\..\example\source -o..\..\build\doc_res -v..\..\example\config -e*.txt;*.png
 ```
 
-Example of using the program in Linux/Unix:
+Example of using the program in Linux:
 ```sh
 smacro -i../../example/source -o../../build/doc_res -v../../example/config -e*.txt;*.png
 ```
 
-### Installation
+### How to build/install on Linux
 
-The Smacro can be build in different ways depending of what build tools you are using. The standard distribution contains the projects files for QMake/Qt Creator (for both Windows and Linux) and Visual Studio 2015. It is assumed that you have Qt5 installed and all the necessary build tools like compiler and **qmake** are available.
-
-#### How to build and install with QMake in Linux
-
-Just navigate to the folder `project-root/projects/qmake` and run
+To install SMACRO on Linux you have to build program's binary from sources. Just clone the repo or download the sources from the project's releases page (https://github.com/vasyutin/smacro/releases) and unzip them. Then chdir to *\<ProjectRoot\>/projects/linux* and run
 
 ```sh
-qmake smacro.pro
 make
-make install
+sudo make install
 ```
 
-#### How to build with QMake in Windows
+### How to install on Windows
 
-In Windows you don't have to make install step. You have to do it manually. 'Change directory' to folder `project-root\projects\qmake` and run the following command in the command prompt
+The executable file for Windows can be downloaded at https://github.com/vasyutin/smacro/releases. The file is distributed as a ZIP archive. Extract the executable from the archive and put it in the directory that is listed in your PATH environment variable, to ensure that it can be called from a command prompt.
+
+### How to build on Windows
+
+To build SMACRO from sources you have to clone the repo or or download the sources from the project's releases pages (https://github.com/vasyutin/smacro/releases) and unzip them. 
+
+### Build with MinGW 
+ 
+Chdir to *\<ProjectRoot\>\\projects\\mingw* and run
 
 ```sh
-qmake smacro.pro
-```
-Then run the make tool that is installed in your system and is able to build Qt projects (depending on your setup it can be **nmake**, **make** etc.)
+mingw32-make
+``` 
 
-After that step put the result file `project-root\build\release\smacro.exe` in the directory, that is listed in your **PATH** environment variable, to ensure that it can be called from a command prompt.
+The compiled binary is placed in the folder *\<ProjectRoot\>\\build\\release* and named *smacro.exe*. To use it put it in the directory is listed in your *PATH* environment variable.
 
-#### How to build with Qt Creator (Linux and Windows)
+### Build with Visual Studio
 
-Just open the main project file `project-root/projects/qmake/smacro.pro` and start building it using Qt Creator controls. As mentioned above all the result binaries are placed in the `project-root/build/release` or `project-root/build/debug` folder depending on configuration. You have to copy the result binary (`smacro` in Linux and `smacro.exe` in Windows) to proper location to make it available outside Qt Creator.
+By now I supply solution (.sln) with the project files (.vcproj) files for Visual Studio 2015 Community Edition. To build the software open the solution file *\<ProjectRoot\>\\projects\\VS2015\\smacro.sln* and start the build process. The compiled binaries will be placed in the folder *\<ProjectRoot\>\build\Platform\Configuration*, where the *Platform* is 'Win32' or 'x64' and the *Configuration* is 'Debug' or 'Release'. To run the program outside Visual Studio, you have to copy the result binary file *smacro.exe* to the folder, which is added to your *PATH* environment variable.
 
-#### How to build with Visual Studio 2015 (Windows)
+The sources are nothing than pure C++ thus the project can be opened in compiled in the newer version of Visual Studio.
 
-By now I supply solution (.sln) with the project files (.vcproj) files for Visual Studio 2015 Community Edition with Qt5. It is assumed that the environment variable **QTDIR** is defined for current version of Qt. And it contains the path for the Qt root folder (thus the path to the Qt binaries is `%QTDIR%\bin`). You don't have to install 'Visual Studio Add-in for Qt' (or some similar tool) to build the software.
-
-To build the software open the solution file `project-root\projects\VS2015-Qt5\smacro.sln` and start the build process. The compiled binaries will be placed in the folder `project-root\build\Platform\Configuration`, where the 'Platform' is 'Win32' or 'x64' and the 'Configuration' is 'Debug' or 'Release'. To run the program outside Visual Studio, you have to copy the result binary file `project-root\build\Platform\Configuration\smacro.exe` to the folder, that is added to your **PATH** environment variable.
-
-License
-----
-
+### License
 GPL
 
 ### Author
-
-Sergey Vasyutin (svpro [at] outlook.com)
+Sergey Vasyutin (in [at] vasyut.in)
