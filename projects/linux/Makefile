@@ -1,6 +1,3 @@
-# Create all necessary folders
-CREATE_FOLDERS:=$(shell mkdir -p ../../build/obj)
-
 #
 CC=gcc
 CXX=g++
@@ -15,6 +12,9 @@ LDFLAGS=
 APP_BIN_NAME=smacro
 APP_BIN=../../build/$(APP_BIN_NAME)
 OBJ_DIR=../../build/obj
+
+MKDIR_OBJ=@mkdir -p ../../build/obj
+MKDIR_BIN=@mkdir -p ../../build
 
 #-----------------------------------------------------------------
 ifeq ($(debug), true)
@@ -38,9 +38,11 @@ APP_SRCS=../../src/main.cpp \
 APP_OBJS=$(subst ../../src/,$(OBJ_DIR)/,$(subst .cpp,.o,$(APP_SRCS)))
 
 $(OBJ_DIR)/%.o: ../../src/%.cpp
+	$(MKDIR_OBJ)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(APP_BIN): $(APP_OBJS)
+	$(MKDIR_BIN)
 	$(CXX) $(LDFLAGS) -o $(APP_BIN) $(LDLIBS) $(APP_OBJS)
 
 app-binary: $(APP_BIN)
@@ -53,7 +55,7 @@ DEPENDENCIES=$(APP_OBJS:%.o=%.d)
 -include $(DEPENDENCIES)
 
 clean:
-	rm -rf ../../build/*
+	rm -rf ../../build
 
 install: $(APP_BIN)
 	install --mode 755 -s -t /usr/bin $(APP_BIN)
