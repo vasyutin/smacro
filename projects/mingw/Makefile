@@ -1,10 +1,3 @@
-# Create all necessary folders
-ifeq ($(debug), true)
-	CREATE_FOLDERS:=$(shell mkdir ..\..\build\debug 2> nul && mkdir ..\..\build\debug\obj 2> nul)
-else
-	CREATE_FOLDERS:=$(shell mkdir ..\..\build\release 2> nul && mkdir ..\..\build\release\obj 2> nul)
-endif
-
 #
 CC=gcc
 CXX=g++
@@ -24,10 +17,18 @@ ifeq ($(debug), true)
 	LDFLAGS+=-g3
 	APP_BIN=../../build/debug/$(APP_BIN_NAME)
 	OBJ_DIR=../../build/debug/obj
+	BIN_DIR_W=..\..\build\debug
+	OBJ_DIR_W=..\..\build\debug\obj
 else
+	BIN_DIR=../../build/release
 	APP_BIN=../../build/release/$(APP_BIN_NAME)
 	OBJ_DIR=../../build/release/obj
+	BIN_DIR_W=..\..\build\release
+	OBJ_DIR_W=..\..\build\release\obj
 endif
+
+MKDIR_OBJ=@if not exist $(OBJ_DIR_W) mkdir $(OBJ_DIR_W) 2> nul
+MKDIR_BIN=@if not exist $(BIN_DIR_W) mkdir $(BIN_DIR_W) 2> nul
 
 #-----------------------------------------------------------------
 # Default target
@@ -45,9 +46,11 @@ APP_SRCS=../../src/main.cpp \
 APP_OBJS=$(subst ../../src/,$(OBJ_DIR)/,$(subst .cpp,.o,$(APP_SRCS)))
 
 $(OBJ_DIR)/%.o: ../../src/%.cpp
+	$(MKDIR_OBJ)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(APP_BIN): $(APP_OBJS)
+	$(MKDIR_BIN)
 	$(CXX) $(LDFLAGS) -o $(APP_BIN) $(LDLIBS) $(APP_OBJS)
 ifneq ($(debug), true)
 	strip $(APP_BIN)
@@ -65,3 +68,4 @@ DEPENDENCIES=$(APP_OBJS:%.o=%.d)
 clean:
 	del /S /Q ..\..\build\*.* > nul 2> nul
 	for /D %%i in (..\..\build\*.*) do rmdir /S /Q %%i > nul 2> nul
+	rmdir /S /Q ..\..\build
