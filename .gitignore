@@ -7,6 +7,7 @@
 moc_*.*
 qrc_*.*
 .vc
+.vs
 *.VC.opendb
 *.VC.db
 /projects/qmake/Makefile

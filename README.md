@@ -63,4 +63,4 @@ The sources are nothing than pure C++ thus the project can be opened in compiled
 GPL
 
 ### Author
-Sergey Vasyutin (in [at] vasyut.in)
+Sergey Vasyutin (sergey [at] vasyut.in)
