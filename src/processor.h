@@ -30,18 +30,22 @@ public:
 	bool isExcluded(const TFileNameString &FileName_) const;
 
 private:
-	//
 	struct TProcessData {
 		TProcessData(const TFileNameString &InputFile_, const TFileNameString &OutputFile_);
 		bool initialized() const;
 		const std::string &errorMessage() const {return ErrorMessage;}
 
-		unsigned LineNo;
-		std::ifstream Input;
+		std::vector<std::unique_ptr<std::ifstream> > Input;
+		// Track included files to prevent cyclic includes
+		std::vector<TFileNameString> InputFiles;
+		std::vector<unsigned> CurrentLines;
+
 		std::ofstream Output;
-		const TFileNameString &InputFile;
 		const TFileNameString &OutputFile;
 		std::string ErrorMessage;
+
+		const TFileNameString& inputFile() const {return InputFiles.back();}
+		unsigned lineNo() const {return CurrentLines.back();}
 		};
 
 	enum class TResult {
@@ -66,7 +70,7 @@ private:
 	TResult processLinesTillNextKeyword(TProcessData &Data_, std::string &Line_, bool Skip_);
 
 	std::regex m_VariableRegExp, m_IfRegExp, m_ElifRegExp, m_ElseRegExp, m_EndifRegExp, 
-		m_CommentOperatorRegExp, m_CommentRegExp;
+		m_CommentOperatorRegExp, m_CommentRegExp, m_IncludeRegExp;
 
 	enum class TLexemeType {
 		String,

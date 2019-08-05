@@ -226,6 +226,18 @@ return RetValue;
 }
 
 // -----------------------------------------------------------------------
+TFileNameString Utf8ToFileNameString(const std::string &Utf8_)
+{
+int CharsCount = MultiByteToWideChar(CP_UTF8, 0, Utf8_.c_str(), int(Utf8_.size()), NULL, 0);
+if(!CharsCount) return TFileNameString();
+//
+TFileNameString Result;
+Result.resize(CharsCount);
+MultiByteToWideChar(CP_UTF8, 0, Utf8_.c_str(), int(Utf8_.size()), (wchar_t*)(Result.c_str()), CharsCount);
+return Result;
+}
+
+// -----------------------------------------------------------------------
 TFileNameString AbsolutePath(const TFileNameString &Path_)
 {
 const DWORD MAX_PATH_SIZE = 1024;

@@ -37,7 +37,8 @@ TProcessor::TProcessor(const TParameters &Parameters_):
 	m_ElseRegExp("#else"),
 	m_EndifRegExp("#endif"), 
 	m_CommentOperatorRegExp("#[/][/]"),
-	m_CommentRegExp("[/][/]")
+	m_CommentRegExp("[/][/]"),
+	m_IncludeRegExp("#include\\s*[<]([^>]*)[>]")
 {
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::String;
@@ -115,20 +116,24 @@ return Result_ == TResult::OperatorIf || Result_ == TResult::OperatorElif ||
 // -----------------------------------------------------------------------
 TProcessor::TProcessData::TProcessData(const TFileNameString &InputFile_, 
 	const TFileNameString &OutputFile_):
-	InputFile(InputFile_), 
 	OutputFile(OutputFile_)
 {
+assert(Input.empty());
+std::unique_ptr<std::ifstream> Stream(new std::ifstream);
 #if defined(__MINGW32__) || defined(__MINGW64__)
-	Input.open(WStringToWindowsLocal(InputFile_), std::ios::binary);
+	Stream->open(WStringToWindowsLocal(InputFile_), std::ios::binary);
 #else
-	Input.open(InputFile_, std::ios::binary);
+	Stream->open(InputFile_, std::ios::binary);
 #endif
-if(!Input) {
+if(!(*Stream)) {
 	ErrorMessage = "Can't open input file: '";
 	ErrorMessage += FileNameStringToConsole(InputFile_);
 	ErrorMessage += "'.";
 	return;
 	}
+Input.push_back(std::move(Stream));
+InputFiles.push_back(InputFile_);
+CurrentLines.push_back(0);
 
 #if defined(__MINGW32__) || defined(__MINGW64__)
 	Output.open(WStringToWindowsLocal(OutputFile_), std::ios::binary);
@@ -146,7 +151,7 @@ if(!Output) {
 // -----------------------------------------------------------------------
 bool TProcessor::TProcessData::initialized() const
 {
-return Input.is_open() && Output.is_open();
+return !Input.empty() && Input.back()->is_open() && Output.is_open();
 }
 
 // -----------------------------------------------------------------------
@@ -158,7 +163,6 @@ if(!Data.initialized()) {
 	return false;
 	}
 //
-Data.LineNo = 0;
 std::string Line;
 while(true) {
 	TResult Result = readNextLine(Data, Line);
@@ -177,7 +181,7 @@ while(true) {
 	assert(isOperator(Result));
 	// There can be only #if
 	if(Result != TResult::OperatorIf) {
-		std::cerr << "Expected #if: " << FileNameStringToConsole(Input_) << ':' << Data.LineNo <<
+		std::cerr << "Expected #if: " << FileNameStringToConsole(Input_) << ':' << Data.lineNo() <<
 			".";
 		return false;
 		}
@@ -220,15 +224,24 @@ if(!Line_.empty()) {
 std::string::const_iterator TProcessor::firstNonSpace(std::string::const_iterator Begin_, 
 		std::string::const_iterator End_)
 {
-return std::find_if_not(Begin_, End_, [](char Ch_) {return std::isspace((int)Ch_);});
+return std::find_if_not(Begin_, End_, [](char Ch_) {return (Ch_ < 0)? 0: std::isspace((int)Ch_);});
 }
 
 // -----------------------------------------------------------------------
 TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &Line_)
 {
+assert(!Data_.Input.empty());
 std::string::const_iterator Index;
 while(true) {
-	if(!std::getline(Data_.Input, Line_)) return TResult::EndOfFile;
+	if(!std::getline(*Data_.Input.back(), Line_)) {
+		// Don close the main file
+		if(Data_.Input.size() <= 1) return TResult::EndOfFile;
+		//
+		Data_.Input.pop_back();
+		Data_.InputFiles.pop_back();
+		Data_.CurrentLines.pop_back();
+		continue;
+		}
 	// Check if line starts with #
 	Index = firstNonSpace(Line_.cbegin(), Line_.cend());
 	if(Index == Line_.cend() || *Index != '#') {
@@ -238,6 +251,34 @@ while(true) {
 	std::smatch Match;
 	if(std::regex_search(Index, Line_.cend(), Match, m_CommentOperatorRegExp) &&
 		!Match.position()) {
+		continue;
+		}
+	// Substitute values
+	valuesSubstitution(Line_);
+
+	// Include directive
+	if(std::regex_search(Index, Line_.cend(), Match, m_IncludeRegExp) && !Match.position()) {
+		if(!Match[1].length()) return TResult::SyntaxError;
+
+		std::unique_ptr<std::ifstream> Stream(new std::ifstream);
+		#if defined(_MSC_VER)
+			TFileNameString FileName(Utf8ToFileNameString(std::string(Match[1].first, Match[1].second)));
+			Stream->open(FileName, std::ios::binary);
+		#elif defined(__MINGW32__) || defined(__MINGW64__)
+			TFileNameString FileName(Utf8ToFileNameString(std::string(Match[1].first, Match[1].second)));
+			Stream->open(WStringToWindowsLocal(FileName), std::ios::binary);
+		#else
+			std::string FileName(Match[1].first, Match[1].second);
+			Stream->open(FileName, std::ios::binary);
+		#endif
+		if(!(*Stream)) {
+			Data_.ErrorMessage  << "Can't include file '" << FileNameStringToConsole(FileName) << "': " <<
+				FileNameStringToConsole(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
+			return TResult::SyntaxError;
+			}
+		Data_.Input.push_back(std::move(Stream));
+		Data_.InputFiles.push_back(FileName);
+		Data_.CurrentLines.push_back(0);
 		continue;
 		}
 	break;
@@ -258,7 +299,6 @@ else if(std::regex_search(Index, Line_.cend(), Match, m_EndifRegExp) && !Match.p
 	Result = TResult::OperatorEndif;
 	}
 else {
-	valuesSubstitution(Line_);
 	return TResult::OK;
 	}
 ptrdiff_t MatchedLen = Match.length();
@@ -267,13 +307,12 @@ TrimString(Line_);
 
 while(!Line_.empty() && *(Line_.end() - 1) == '\\') {
 	std::string NewLine;
-	if(!std::getline(Data_.Input, NewLine)) {
-		Data_.ErrorMessage  << "Line " << Data_.LineNo << 
-			" ends with '\\' but next string is not present: " << 
-			FileNameStringToConsole(Data_.InputFile) << ':' << std::to_string(Data_.LineNo);
+	if(!std::getline(*Data_.Input.back(), NewLine)) {
+		Data_.ErrorMessage  << "Line ends with '\\' but next string is not present: " << 
+			FileNameStringToConsole(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
 		return TResult::SyntaxError;
 		}
-	Data_.LineNo++;
+	(Data_.CurrentLines.back())++;
 	TrimString(NewLine);
 	// Removing '\\'
 	*(Line_.end() - 1) = ' ';
@@ -287,14 +326,14 @@ if(std::regex_search(Line_.cbegin(), Line_.cend(), Match, m_CommentRegExp)) {
 if(Result == TResult::OperatorEndif || Result == TResult::OperatorElse) {
 	if(!Line_.empty()) {
 		Data_.ErrorMessage << "Unexpected symbols after keyword: " <<
-			FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
+			FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
 		return TResult::SyntaxError;
 		}
 	}
 else if(Result == TResult::OperatorIf || Result == TResult::OperatorElif) {
 	if(Line_.empty()) {
 		Data_.ErrorMessage << "Expression expected after keyword: " << 
-			FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
+			FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
 		return TResult::SyntaxError;
 		}
 	}
@@ -335,8 +374,8 @@ bool ExpectiongEndifOnly = false;
 TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: (!ValidExpressionFound));
 while(true) {
 	if(Result == TResult::EndOfFile) {
-		Data_.ErrorMessage << "Expected #endif: " << FileNameStringToConsole(Data_.InputFile) << 
-			':' << Data_.LineNo;
+		Data_.ErrorMessage << "Expected #endif: " << FileNameStringToConsole(Data_.inputFile()) << 
+			':' << Data_.lineNo();
 		return TResult::SyntaxError;
 		}
 	else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
@@ -350,8 +389,8 @@ while(true) {
 		}
 	else if(Result == TResult::OperatorElif) {
 		if(ExpectiongEndifOnly) {
-			Data_.ErrorMessage << "Unexpected #elif: " << FileNameStringToConsole(Data_.InputFile) 
-				<< ':' << Data_.LineNo;
+			Data_.ErrorMessage << "Unexpected #elif: " << FileNameStringToConsole(Data_.inputFile()) 
+				<< ':' << Data_.lineNo();
 			return TResult::SyntaxError;
 			}
 		// Always check the expression to find errors
@@ -366,8 +405,8 @@ while(true) {
 		}
 	else if(Result == TResult::OperatorElse) {
 		if(ExpectiongEndifOnly) {
-			Data_.ErrorMessage << "Unexpected #else: " << FileNameStringToConsole(Data_.InputFile) 
-				<< ':' << Data_.LineNo;
+			Data_.ErrorMessage << "Unexpected #else: " << FileNameStringToConsole(Data_.inputFile()) 
+				<< ':' << Data_.lineNo();
 			return TResult::SyntaxError;
 			}
 		Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: ValidExpressionFound);
@@ -524,7 +563,7 @@ struct THelper {
 				TVariables::const_iterator iVar = This_.m_Variables.find(it->Value);
 				if(iVar == This_.m_Variables.end()) {
 					Data_.ErrorMessage << "Undefined variable '" << 
-						FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
+						FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
 					return false;
 					}
 				Value.Type = TValueType::String;
@@ -621,7 +660,7 @@ struct THelper {
 					}
 				if(!Found) {
 					Data_.ErrorMessage << "Open bracket expected in expression" << 
-						FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
+						FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
 					return false;
 					}
 				}
@@ -635,7 +674,7 @@ struct THelper {
 					while(operationPrecedence(Stack.top().Type) >= Precedence) {
 						if(Stack.top().Type == TValueType::OpenBracket) {
 							Data_.ErrorMessage << "Unpaired bracket" << 
-								FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
+								FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
 							return false;
 							}
 						Result.push_back(Stack.top());
@@ -650,7 +689,7 @@ struct THelper {
 		while(!Stack.empty()) {
 			if(Stack.top().Type == TValueType::OpenBracket) {
 				Data_.ErrorMessage << "Unpaired bracket" << 
-					FileNameStringToConsole(Data_.InputFile) << ':' << Data_.LineNo;
+					FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
 				return false;
 				}
 			Result.push_back(Stack.top());
@@ -818,13 +857,13 @@ struct THelper {
 //
 std::vector<TLexeme> Lexemes;
 if(!THelper::lexAnalysis(*this, Line_, Lexemes)) {
-	Data_.ErrorMessage << "Error in expression: " << FileNameStringToConsole(Data_.InputFile) << 
-		':' << Data_.LineNo;
+	Data_.ErrorMessage << "Error in expression: " << FileNameStringToConsole(Data_.inputFile()) << 
+		':' << Data_.lineNo();
 	return false;
 	}
 if(Lexemes.empty()) {
-	Data_.ErrorMessage << "Expression expected: " << FileNameStringToConsole(Data_.InputFile) << 
-		':' << Data_.LineNo;
+	Data_.ErrorMessage << "Expression expected: " << FileNameStringToConsole(Data_.inputFile()) << 
+		':' << Data_.lineNo();
 	return false;
 	}
 
@@ -844,8 +883,8 @@ if(!THelper::toVMValues(*this, Lexemes, Values, Data_) ||
 	}
 
 if(Values.empty()) {
-	Data_.ErrorMessage << "Invalid expression: " << FileNameStringToConsole(Data_.InputFile) << 
-		':' << Data_.LineNo;
+	Data_.ErrorMessage << "Invalid expression: " << FileNameStringToConsole(Data_.inputFile()) << 
+		':' << Data_.lineNo();
 	return false;
 	}
 
@@ -859,8 +898,8 @@ if(Values.empty()) {
 #endif
 
 if(!THelper::runVM(Values, Result_)) {
-	Data_.ErrorMessage << "Invalid expression: " << FileNameStringToConsole(Data_.InputFile) << 
-		':' << Data_.LineNo;
+	Data_.ErrorMessage << "Invalid expression: " << FileNameStringToConsole(Data_.inputFile()) << 
+		':' << Data_.lineNo();
 	return false;
 	}
 
