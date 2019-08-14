@@ -37,5 +37,5 @@ struct TParameters {
 	TFileNameString InputFolder;
 	TFileNameString OutputFolder;
 	TVariables Variables;
-	TExcludePatterns ExcludePatterns;
+	TExcludePatterns ExcludePatterns, IgnorePatterns;
 	};

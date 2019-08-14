@@ -31,6 +31,7 @@
 TProcessor::TProcessor(const TParameters &Parameters_): 
 	m_Variables(Parameters_.Variables),
 	m_ExcludePatterns(Parameters_.ExcludePatterns),
+	m_IgnorePatterns(Parameters_.IgnorePatterns),
 	m_VariableRegExp("[$][{]([A-Za-z0-9_]+)[}]"),
 	m_IfRegExp("#if\\s+"), 
 	m_ElifRegExp("#elif\\s+"), 
@@ -98,9 +99,9 @@ m_LexemeRegExps.back().RegExp.assign("||");
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::isExcluded(const TFileNameString &FileName_) const
+bool TProcessor::matchesPatterns(const TFileNameString &FileName_, const TExcludePatterns &Patterns_)
 {
-for(auto p_it = m_ExcludePatterns.begin(); p_it != m_ExcludePatterns.end(); ++p_it) {
+for(auto p_it = Patterns_.begin(); p_it != Patterns_.end(); ++p_it) {
 	if(std::regex_match(FileName_, *p_it)) return true;
 	}
 return false;

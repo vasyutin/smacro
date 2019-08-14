@@ -43,7 +43,9 @@ std::cout << "SMACRO - simple macro processor. Helps prepare documentation.\n"
 " -v<variables file> - the file, containing values of the variables for the current run.\n"
 "    The text in the file is assumed to be in UTF-8\n"
 " -e<masks> - The masks of filenames to exclude from processing. This files are only\n"
-"    copied to the output folder. The masks are separated by comma.\n"
+"    copied to the output folder. The masks are separated by commas.\n"
+" -d<masks> - The masks of filenames to ignore. This files are not copied to the output\n"
+"    folder. The masks are separated by commas.\n"
 "\n"
 "All the files being processed (except the files excluded from the processing with the -e\n"
 "switch) are assumed to be in UTF-8 encoding.\n\n"
@@ -238,6 +240,12 @@ for(int i = 1; i < Argc_; ++i) {
 			return false;
 			}
 		break;
+	case TFileNameChar('d'):
+		if(!ParseMasks(Argument + 2, Parameters_.IgnorePatterns)) {
+			// The error message is provided by the callee.
+			return false;
+			}
+		break;
 	default:
 		std::cerr << "Invalid switch: '" << FileNameStringToConsole(Argument) << "'.";
 		return false;
@@ -279,6 +287,8 @@ for(auto it = Files.begin(); it != Files.end(); ++it) {
 			return false;
 			}
 		}
+	if(Processor_.isIgnored(*it)) continue;
+
 	bool Result = Processor_.isExcluded(*it)? 
 		DuplicateFile(InputFile.c_str(), OutputFile.c_str()):
 		Processor_.processFile(InputFile, OutputFile);
@@ -346,6 +356,16 @@ if(!ParseParameters(Argc_, (const TFileNameChar**)Argv_, Parameters)) {
 if(!THelper::normalizeFolderName(Parameters.InputFolder) ||
 	!THelper::normalizeFolderName(Parameters.OutputFolder)) {
 	return RETCODE_INVALID_PARAMETERS;
+	}
+
+// Add SMACRO_ROOT var
+std::string SmacroRoot("SMACRO_ROOT");
+if(Parameters.Variables.find(SmacroRoot) == Parameters.Variables.end()) {
+	#if defined(SMACRO_WINDOWS)
+		Parameters.Variables[SmacroRoot] = FileNameStringToUtf8(Parameters.InputFolder);
+	#else
+		Parameters.Variables[SmacroRoot] = Parameters.InputFolder;
+	#endif
 	}
 
 TProcessor Processor(Parameters);

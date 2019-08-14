@@ -27,7 +27,12 @@ class TProcessor {
 public:
 	TProcessor(const TParameters &Parameters_);
 	bool processFile(const TFileNameString &Input_, const TFileNameString &Output_);
-	bool isExcluded(const TFileNameString &FileName_) const;
+	bool isExcluded(const TFileNameString &FileName_) const {
+		return matchesPatterns(FileName_, m_ExcludePatterns);
+		}
+	bool isIgnored(const TFileNameString &FileName_) const {
+		return matchesPatterns(FileName_, m_IgnorePatterns);
+		}
 
 private:
 	struct TProcessData {
@@ -61,7 +66,7 @@ private:
 		};
 
 	const TVariables &m_Variables;
-	const TExcludePatterns &m_ExcludePatterns;
+	const TExcludePatterns &m_ExcludePatterns, &m_IgnorePatterns;
 	//
 	TResult readNextLine(TProcessData &Data_, std::string &Line_);
 	TResult processOperator(TProcessData &Data_, std::string &Line_, bool Skip_);
@@ -100,4 +105,6 @@ private:
 	bool calculateExp(const std::string &Line_, bool &Result_, TProcessData &Data_);
 	static std::string::const_iterator firstNonSpace(std::string::const_iterator Begin_, 
 		std::string::const_iterator End_);
+
+	static bool matchesPatterns(const TFileNameString &FileName_, const TExcludePatterns &Patterns_);
 	};
