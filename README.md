@@ -10,7 +10,7 @@ The switches are:\
 *\-i\<input folder\>* - the folder, containing documentation to process.\
 *\-o\<output folder\>* - the destination folder for the processed documentation.\
 *\-v\<variables file\>* - the file, containing values of the variables for the current run. The text in the file is assumed to be in UTF-8.\
-*\-e\<masks\>* - the masks of filenames to exclude from processing. This files are only copied to the output folder. The masks are separated by commas.
+*\-e\<masks\>* - the masks of filenames to exclude from processing. This files are only copied to the output folder. The masks are separated by commas.\
 *\-d\<masks\>* - the masks of filenames to ignore. This files are not copied to the output folder. The masks are separated by commas.
 
 All the files being processed (except the files excluded from the processing with the *-e* switch) are assumed to be in UTF-8 encoding.
