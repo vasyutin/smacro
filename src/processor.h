@@ -68,7 +68,8 @@ private:
 	const TVariables &m_Variables;
 	const TExcludePatterns &m_ExcludePatterns, &m_IgnorePatterns;
 	//
-	TResult readNextLine(TProcessData &Data_, std::string &Line_);
+	// DoProcessing - process variables substitution and files inclusion
+	TResult readNextLine(TProcessData &Data_, std::string &Line_, bool DoProcessing_);
 	TResult processOperator(TProcessData &Data_, std::string &Line_, bool Skip_);
 	static bool isOperator(TResult Result_);
 	void valuesSubstitution(std::string &Line_);

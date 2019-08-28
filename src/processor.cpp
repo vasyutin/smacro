@@ -166,7 +166,7 @@ if(!Data.initialized()) {
 //
 std::string Line;
 while(true) {
-	TResult Result = readNextLine(Data, Line);
+	TResult Result = readNextLine(Data, Line, true);
 	if(Result == TResult::OK) {
 		if(!Data.Output.write(Line.c_str(), Line.size())) {
 			std::cerr << "Error writing file '" << FileNameStringToConsole(Output_) << "'.";
@@ -229,7 +229,7 @@ return std::find_if_not(Begin_, End_, [](char Ch_) {return (Ch_ < 0)? 0: std::is
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &Line_)
+TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &Line_, bool DoProcessing_)
 {
 assert(!Data_.Input.empty());
 std::string::const_iterator Index;
@@ -255,32 +255,34 @@ while(true) {
 		continue;
 		}
 	// Substitute values
-	valuesSubstitution(Line_);
+	if(DoProcessing_) {
+		valuesSubstitution(Line_);
 
-	// Include directive
-	if(std::regex_search(Index, Line_.cend(), Match, m_IncludeRegExp) && !Match.position()) {
-		if(!Match[1].length()) return TResult::SyntaxError;
+		// Include directive
+		if(std::regex_search(Index, Line_.cend(), Match, m_IncludeRegExp) && !Match.position()) {
+			if(!Match[1].length()) return TResult::SyntaxError;
 
-		std::unique_ptr<std::ifstream> Stream(new std::ifstream);
-		#if defined(_MSC_VER)
-			TFileNameString FileName(Utf8ToFileNameString(std::string(Match[1].first, Match[1].second)));
-			Stream->open(FileName, std::ios::binary);
-		#elif defined(__MINGW32__) || defined(__MINGW64__)
-			TFileNameString FileName(Utf8ToFileNameString(std::string(Match[1].first, Match[1].second)));
-			Stream->open(WStringToWindowsLocal(FileName), std::ios::binary);
-		#else
-			std::string FileName(Match[1].first, Match[1].second);
-			Stream->open(FileName, std::ios::binary);
-		#endif
-		if(!(*Stream)) {
-			Data_.ErrorMessage  << "Can't include file '" << FileNameStringToConsole(FileName) << "': " <<
-				FileNameStringToConsole(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
-			return TResult::SyntaxError;
+			std::unique_ptr<std::ifstream> Stream(new std::ifstream);
+			#if defined(_MSC_VER)
+				TFileNameString FileName(Utf8ToFileNameString(std::string(Match[1].first, Match[1].second)));
+				Stream->open(FileName, std::ios::binary);
+			#elif defined(__MINGW32__) || defined(__MINGW64__)
+				TFileNameString FileName(Utf8ToFileNameString(std::string(Match[1].first, Match[1].second)));
+				Stream->open(WStringToWindowsLocal(FileName), std::ios::binary);
+			#else
+				std::string FileName(Match[1].first, Match[1].second);
+				Stream->open(FileName, std::ios::binary);
+			#endif
+			if(!(*Stream)) {
+				Data_.ErrorMessage  << "Can't include file '" << FileNameStringToConsole(FileName) << "': " <<
+					FileNameStringToConsole(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
+				return TResult::SyntaxError;
+				}
+			Data_.Input.push_back(std::move(Stream));
+			Data_.InputFiles.push_back(FileName);
+			Data_.CurrentLines.push_back(0);
+			continue;
 			}
-		Data_.Input.push_back(std::move(Stream));
-		Data_.InputFiles.push_back(FileName);
-		Data_.CurrentLines.push_back(0);
-		continue;
 		}
 	break;
 	}
@@ -346,7 +348,7 @@ TProcessor::TResult TProcessor::processLinesTillNextKeyword(TProcessData &Data_,
 	std::string &Line_, bool Skip_) 
 {
 while(true) {
-	TResult Result = readNextLine(Data_, Line_);
+	TResult Result = readNextLine(Data_, Line_, !Skip_);
 	if(Result == TResult::OK) {
 		if(!Skip_) {
 			if(!Data_.Output.write(Line_.c_str(), Line_.size())) {
@@ -371,7 +373,7 @@ TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string
 bool ValidExpressionFound;
 if(!calculateExp(Line_, ValidExpressionFound, Data_)) return TResult::SyntaxError;
 //
-bool ExpectiongEndifOnly = false;
+bool ExpectingEndifOnly = false;
 TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: (!ValidExpressionFound));
 while(true) {
 	if(Result == TResult::EndOfFile) {
@@ -389,7 +391,7 @@ while(true) {
 		Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: (!ValidExpressionFound));
 		}
 	else if(Result == TResult::OperatorElif) {
-		if(ExpectiongEndifOnly) {
+		if(ExpectingEndifOnly) {
 			Data_.ErrorMessage << "Unexpected #elif: " << FileNameStringToConsole(Data_.inputFile()) 
 				<< ':' << Data_.lineNo();
 			return TResult::SyntaxError;
@@ -402,17 +404,17 @@ while(true) {
 		Result = processLinesTillNextKeyword(Data_, Line_, SkipThis? true: (!ElifExpressionResult));
 		//
 		if(!ValidExpressionFound && ElifExpressionResult) ValidExpressionFound = true;
-		assert(!ExpectiongEndifOnly);
+		assert(!ExpectingEndifOnly);
 		}
 	else if(Result == TResult::OperatorElse) {
-		if(ExpectiongEndifOnly) {
+		if(ExpectingEndifOnly) {
 			Data_.ErrorMessage << "Unexpected #else: " << FileNameStringToConsole(Data_.inputFile()) 
 				<< ':' << Data_.lineNo();
 			return TResult::SyntaxError;
 			}
 		Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: ValidExpressionFound);
 		//
-		ExpectiongEndifOnly = true;
+		ExpectingEndifOnly = true;
 		}
 	else if(Result == TResult::OperatorEndif) {
 		return TResult::OK;
