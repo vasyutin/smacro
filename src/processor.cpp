@@ -91,11 +91,11 @@ m_LexemeRegExps.back().RegExp.assign("[)]");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::And;
-m_LexemeRegExps.back().RegExp.assign("&&");
+m_LexemeRegExps.back().RegExp.assign("[&][&]");
 
 m_LexemeRegExps.push_back(TLexemeRegExp());
 m_LexemeRegExps.back().Type = TLexemeType::Or;
-m_LexemeRegExps.back().RegExp.assign("||");
+m_LexemeRegExps.back().RegExp.assign("[|][|]");
 }
 
 // -----------------------------------------------------------------------
@@ -709,7 +709,7 @@ struct THelper {
 			Stream_ << "'" << Value_.StringValue << "'";
 			break;
 		case TValueType::Bool:
-			Stream_ << (Value_.BoolValue? "true": "false");
+			Stream_ << (Value_.BoolValue? "true':'false");
 			break;
 		case TValueType::Not:
 			Stream_ << "!";
@@ -907,7 +907,7 @@ if(!THelper::runVM(Values, Result_)) {
 	}
 
 #if defined(DEBUG_OUTPUT)
-	std::cout << "Result: " << (Result_? "true": "false") << "\n";
+	std::cout << "Result: " << (Result_? "true':'false") << "\n";
 #endif
 
 return true;

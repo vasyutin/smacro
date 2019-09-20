@@ -293,10 +293,10 @@ for(auto it = Files.begin(); it != Files.end(); ++it) {
 		DuplicateFile(InputFile.c_str(), OutputFile.c_str()):
 		Processor_.processFile(InputFile, OutputFile);
 	//
-	if(!Result) {
+	if(!Result) return false; /*{
 		std::cerr << "Can't write file '" << FileNameStringToConsole(OutputFile) << "'.";
 		return false;
-		}
+		}*/
 	}
 
 for(auto it = Folders.begin(); it != Folders.end(); ++it) {
