@@ -25,6 +25,10 @@
 
 #include <assert.h>
 
+#if !defined(SMACRO_WINDOWS)
+	#include <stddef.h>
+#endif
+
 //#define DEBUG_OUTPUT
 
 // -----------------------------------------------------------------------
