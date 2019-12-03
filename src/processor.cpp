@@ -229,7 +229,7 @@ if(!Line_.empty()) {
 std::string::const_iterator TProcessor::firstNonSpace(std::string::const_iterator Begin_, 
 		std::string::const_iterator End_)
 {
-return std::find_if_not(Begin_, End_, [](char Ch_) {return (Ch_ < 0)? 0: std::isspace((int)Ch_);});
+return std::find_if_not(Begin_, End_, [](std::string::value_type Ch_) {return std::isspace((int)Ch_);});
 }
 
 // -----------------------------------------------------------------------
