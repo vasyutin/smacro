@@ -6,7 +6,7 @@ INCLUDES=-I../../src
 OPTIMIZE=-O3
 CFLAGS=$(OPTIMIZE) $(INCLUDES) -Wall -Wextra -MMD
 CXXFLAGS=-std=c++14 $(OPTIMIZE) $(INCLUDES) -Wall -Wextra -Wno-psabi -MMD
-LDLIBS=
+LDLIBS=-static
 LDFLAGS=
 
 APP_BIN_NAME=smacro.exe
