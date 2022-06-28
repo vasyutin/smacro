@@ -1,7 +1,7 @@
 /*
 * This file is part of SMACRO.
 *
-* Written by Sergey Vasyutin (in@vasyut.in)
+* Written by Sergey Vasyutin (in[at]vasyut.in)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
 #include "globals.h"
 #include "processor.h"
 #include "utils.h"
+
+#include <tclap/CmdLine.h>
 
 #include <iostream>
 #include <set>
@@ -307,46 +309,101 @@ return true;
 }
 
 // -----------------------------------------------------------------------
+const char *g_UsageMessage = 
+	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (https://github.com/vasyutin/smacro).\n"
+	"All the files being processed (except the files excluded from the processing with the -e switch) are assumed to be in UTF-8 encoding.\n"
+	"Example:\n"
+
+	#if defined(SMACRO_WINDOWS)
+		"smacro -i ..\\..\\example\\source -o ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png";
+	#else
+		"smacro -i ../../example/source -o ../../build/doc_res -v ../../example/config -e *.txt,*.png";
+	#endif
+
+// -----------------------------------------------------------------------
 // Processes the folder with the documentation in the HTML format.
 // Gets the file with the values of variables and processes the documentation's
 // files according to the values of the variables.
 // -----------------------------------------------------------------------
-#if defined(__MINGW32__) || defined(__MINGW64__)
+#if defined(SMACRO_MINGW)
 	int main(int Argc_, char *ArgvLocal8_[])
 #elif defined(SMACRO_WINDOWS)
-	int wmain(int Argc_, wchar_t *Argv_[])
+	int wmain(int Argc_, wchar_t *ArgvWcharT_[])
 #else
-	int main(int Argc_, char *Argv_[])
+	int main(int Argc_, char *ArgvUtf8_[])
 #endif
 {
-struct THelper {
-	static bool normalizeFolderName(TFileNameString &Value_) {
-		assert(!Value_.empty());
-		#if defined(SMACRO_WINDOWS)
-			Value_ = AbsolutePath(Value_);
-			if(Value_.empty()) {
-				std::cerr << "Path '" << FileNameStringToConsole(Value_) << "' is invalid.";
-				return false;
+	struct THelper {
+		static bool normalizeFolderName(TFileNameString &Value_) {
+			assert(!Value_.empty());
+			#if defined(SMACRO_WINDOWS)
+				Value_ = AbsolutePath(Value_);
+				if(Value_.empty()) {
+					std::cerr << "Path '" << FileNameStringToConsole(Value_) << "' is invalid.";
+					return false;
+					}
+			#endif
+			if(Value_[Value_.size() - 1] != DIR_SEPARATOR)
+				Value_ += DIR_SEPARATOR;
+			return true;
+			}
+		};
+
+	// ---
+	TParameters Parameters;
+	LOCAL_BLOCK {
+		#if defined(SMACRO_MINGW) || defined(SMACRO_MSC)
+			std::vector<const char*> ArgvPtrs(Argc_);
+			std::vector<std::string> ArgvStrings(Argc_);
+			for(int i = 0; i < Argc_; ++i) {
+				#if defined(SMACRO_MSC)
+					WStringToUTF8(ArgvWcharT_[i], ArgvStrings[i]);
+				#else
+					WindowsLocalToUTF8(ArgvLocal8_[i], ArgvStrings[i]);
+				#endif
+				ArgvPtrs[i] = ArgvStrings[i].c_str();
 				}
+			const char **ArgvUtf8_ = &ArgvPtrs[0];
 		#endif
-		if(Value_[Value_.size() - 1] != DIR_SEPARATOR)
-			Value_ += DIR_SEPARATOR;
-		return true;
-		}
-	};
 
-// ---
-#if defined(__MINGW32__) || defined(__MINGW64__)
-	std::vector<const wchar_t*> ArgvPtrs(Argc_);
-	std::vector<std::wstring> ArgvStrings(Argc_);
-	for(int i = 0; i < Argc_; ++i) {
-		WindowsLocalToWString(ArgvLocal8_[i], ArgvStrings[i]);
-		ArgvPtrs[i] = ArgvStrings[i].c_str();
-		}
-	const wchar_t **Argv_ = &ArgvPtrs[0];
-#endif
+		TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "1.0");
+		TCLAP::ValueArg<std::string> InputFolder("i", "input", "The folder, containing documentation files to process", true, std::string(), "input folder", CmdParser);
+		TCLAP::ValueArg<std::string> OutputFolder("o", "output", "The destination folder for the processed files", true, std::string(), "output folder", CmdParser);
+		TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
+			true, std::string(), "variables file", CmdParser);
+		TCLAP::ValueArg<std::string> ExcludeMasks("e", "exclude", 
+			"The masks of filenames to exclude from processing. This files are only copied to the output folder. The masks are separated by commas.", false, std::string(), "exclude masks", 
+			CmdParser);
+		TCLAP::ValueArg<std::string> ExcludeMasks("g", "ignore",
+			"The masks of filenames to ignore. This files are not copied to the output folder. The masks are separated by commas.", false, std::string(), "ignore masks",
+			CmdParser);
 
-TParameters Parameters;
+		try {
+			CmdParser.parse(Argc_, ArgvUtf8_);
+		}
+		catch (const TCLAP::ArgException& Exeption_) {
+			std::cerr << "error: " << Exeption_.error() << " for arg " << Exeption_.argId() << std::endl;
+			return RETCODE_INVALID_PARAMETERS;
+		}
+	}
+
+	#if defined(SMACRO_WINDOWS)
+		UTF8ToWString(InputFolder.getValue().c_str(), Parameters.InputFolder);
+		UTF8ToWString(OutputFolder.getValue().c_str(), Parameters.OutputFolder);
+
+		
+	#else
+		Parameters.InputFolder = InputFolder.getValue();
+
+	#endif
+
+
+	
+
+
+
+
+
 if(!ParseParameters(Argc_, (const TFileNameChar**)Argv_, Parameters)) {
 	std::cerr << '\n' << std::endl;
 	Usage();

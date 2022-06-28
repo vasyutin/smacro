@@ -3,7 +3,7 @@
 /*
 * This file is part of SMACRO.
 *
-* Written by Sergey Vasyutin (in@vasyut.in)
+* Written by Sergey Vasyutin (in[at]vasyut.in)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -25,10 +25,16 @@
       #ifndef SMACRO_WINDOWS
          #define SMACRO_WINDOWS
 		#endif
+		#ifndef SMACRO_MSC
+			#define SMACRO_MSC
+		#endif
    #endif
 #elif defined(__MINGW32__) || defined(__MINGW64__)
    #ifndef SMACRO_WINDOWS
       #define SMACRO_WINDOWS
+	#endif
+	#ifndef SMACRO_MINGW
+		#define SMACRO_MINGW
 	#endif
 #elif defined(__linux__) || defined(__linux)
 	#ifndef SMACRO_LINUX
@@ -36,7 +42,7 @@
 	#endif
 #endif
 
-#if defined(SMACRO_WINDOWS)
+#if defined(SMACRO_MSC)
 	typedef wchar_t TFileNameChar;
 	typedef std::wstring TFileNameString;
 	#define DIR_SEPARATOR L'\\'
@@ -45,4 +51,6 @@
 	typedef std::string TFileNameString;
 	#define DIR_SEPARATOR '/'
 #endif
+
+#define LOCAL_BLOCK
 
