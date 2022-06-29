@@ -16,9 +16,9 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "globals.h"
-#include "processor.h"
-#include "utils.h"
+#include <tcpl.h>
+#include <processor.h>
+#include <utils.h>
 
 #include <tclap/CmdLine.h>
 
@@ -32,150 +32,104 @@ const int RETCODE_INVALID_PARAMETERS = 1;
 const int RETCODE_PROCESS_ERROR = 1;
 
 // -----------------------------------------------------------------------
-void Usage(void)
-{
-std::cout << "SMACRO - simple macro processor. Helps prepare documentation.\n"
-"Written by Sergey Vasyutin (https://github.com/vasyutin/smacro).\n"
-"\n"
-"Usage: smacro <switches>\n"
-"\n"
-"The switches are:\n"
-" -i<input folder> - the folder, containing documentation files to process\n"
-" -o<output folder> - the destination folder for the processed files\n"
-" -v<variables file> - the file, containing values of the variables for the current run.\n"
-"    The text in the file is assumed to be in UTF-8\n"
-" -e<masks> - The masks of filenames to exclude from processing. This files are only\n"
-"    copied to the output folder. The masks are separated by commas.\n"
-" -d<masks> - The masks of filenames to ignore. This files are not copied to the output\n"
-"    folder. The masks are separated by commas.\n"
-"\n"
-"All the files being processed (except the files excluded from the processing with the -e\n"
-"switch) are assumed to be in UTF-8 encoding.\n\n"
-"Example:\n"
-
-#if defined(SMACRO_WINDOWS)
-" smacro -i..\\..\\example\\source -o..\\..\\build\\doc_res "
-"-v..\\..\\example\\config -e*.txt,*.png\n";
-#else
-" smacro -i../../example/source -o../../build/doc_res "
-"-v../../example/config -e*.txt,*.png\n";
-#endif
-}
-
-// -----------------------------------------------------------------------
-inline size_t FileNameStringLength(const TFileNameChar *String_) 
-{
-#if defined(SMACRO_WINDOWS)
-	return wcslen(String_);
-#else
-	return strlen(String_);
-#endif
-}
-
-// -----------------------------------------------------------------------
 bool ParseVariables(const TFileNameChar *FileName_, TParameters &Parameters_)
 {
-struct TProcessor {
-	TParameters &m_Parameters;
-	std::regex m_VariableWithValue;
-	std::regex m_VariableWithoutValue;
+	struct TProcessor {
+		TParameters &m_Parameters;
+		std::regex m_VariableWithValue;
+		std::regex m_VariableWithoutValue;
 
-	//
-	TProcessor(TParameters &Parameters_): 
-		m_Parameters(Parameters_),
-		m_VariableWithValue("([A-Za-z0-9_]+)\\s*=(.+)"), 
-		m_VariableWithoutValue("[A-Za-z0-9_]+") {}
-
-	//
-	bool processString(const std::string &WLine_) {
-		std::smatch Match;
-		if(std::regex_match(WLine_, Match, m_VariableWithValue)) {
-			m_Parameters.Variables.insert(std::make_pair(Match[1], Match[2]));
-			return true;
-			}
-		if(std::regex_match(WLine_, Match, m_VariableWithoutValue)) {
-			m_Parameters.Variables.insert(std::make_pair(Match[0], std::string()));
-			return true;
-			}
-		return false;
+		//
+		TProcessor(TParameters &Parameters_): 
+			m_Parameters(Parameters_),
+			m_VariableWithValue("([A-Za-z0-9_]+)\\s*=(.+)"), 
+			m_VariableWithoutValue("[A-Za-z0-9_]+") {
 		}
-	};
+		//
+		bool processString(const std::string &WLine_) {
+			std::smatch Match;
+			if(std::regex_match(WLine_, Match, m_VariableWithValue)) {
+				m_Parameters.Variables.insert(std::make_pair(Match[1], Match[2]));
+				return true;
+				}
+			if(std::regex_match(WLine_, Match, m_VariableWithoutValue)) {
+				m_Parameters.Variables.insert(std::make_pair(Match[0], std::string()));
+				return true;
+				}
+			return false;
+			}
+		};
 
-// ---
-#if defined(__MINGW32__) || defined(__MINGW64__)
-	std::string Local8FileName = WStringToWindowsLocal(FileName_);
-	std::ifstream File(Local8FileName);
-#else
+	// ---
 	std::ifstream File(FileName_);
-#endif
-if(!File) {
-	std::cerr << "Can't open file: '" << FileNameStringToConsole(FileName_) << "'.";
-	return false;
-	}
-//
-std::string Line;
-TProcessor Processor(Parameters_);
-while(std::getline(File, Line)) {
-	// Удаляем пробелы в начале и конце строки
-	TrimString(Line);
-	if(Line.empty() || Line[0] == '#') continue;
-	if(!Processor.processString(Line)) 
+	if(!File) {
+		std::cerr << "Can't open file: '" << tcpl::FileNameToConsoleString(FileName_) << "'.";
 		return false;
 	}
-return true;
+	//
+	std::string Line;
+	TProcessor Processor(Parameters_);
+	while(std::getline(File, Line)) {
+		// Удаляем пробелы в начале и конце строки
+		TrimString(Line);
+		if(Line.empty() || Line[0] == '#') continue;
+		if(!Processor.processString(Line)) 
+			return false;
+	}
+	return true;
 }
 
 // -----------------------------------------------------------------------
 template <typename _TString>
 void WildcardToRegexp(_TString &String_)
 {
-typedef typename _TString::value_type TChar;
+	typedef typename _TString::value_type TChar;
 
-struct THelper {
-	static inline bool isAlphaOrDigit(char Char_) {return isalpha(Char_) || isdigit(Char_);}
-	#if defined(SMACRO_WINDOWS)
-		static inline bool isAlphaOrDigit(wchar_t Char_) {
-			return iswalpha(Char_) || iswdigit(Char_);
+	struct THelper {
+		static inline bool isAlphaOrDigit(char Char_) {return isalpha(Char_) || isdigit(Char_);}
+		#if TCPL_FILE_NAME_CHAR_TYPE == TCPL_WCHAR_T
+			static inline bool isAlphaOrDigit(wchar_t Char_) {
+				return iswalpha(Char_) || iswdigit(Char_);
 			}
-	#endif
+		#endif
 	};
 
-struct TWildcardReplacementItem {
-	TChar Source;
-	TChar Replacement[2];
+	struct TWildcardReplacementItem {
+		TChar Source;
+		TChar Replacement[2];
 	};
 
-static const TWildcardReplacementItem Replacement[] = {
-	{TChar('$'), {TChar('\\'), TChar('$')}},
-	{TChar('('), {TChar('\\'), TChar('(')}},
-	{TChar(')'), {TChar('\\'), TChar(')')}},
-	{TChar('*'), {TChar('.'), TChar('*')}},
-	{TChar('+'), {TChar('\\'), TChar('+')}},
-	{TChar('.'), {TChar('\\'), TChar('.')}},
-	{TChar('['), {TChar('\\'), TChar('[')}},
-	{TChar('\\'), {TChar('\\'), TChar('\\')}},
-	{TChar(']'), {TChar('\\'), TChar(']')}},
-	{TChar('^'), {TChar('\\'), TChar('^')}},
-	{TChar('{'), {TChar('\\'), TChar('{')}},
-	{TChar('|'), {TChar('\\'), TChar('|')}},
-	{TChar('}'), {TChar('\\'), TChar('}')}}
+	static const TWildcardReplacementItem Replacement[] = {
+		{TChar('$'), {TChar('\\'), TChar('$')}},
+		{TChar('('), {TChar('\\'), TChar('(')}},
+		{TChar(')'), {TChar('\\'), TChar(')')}},
+		{TChar('*'), {TChar('.'), TChar('*')}},
+		{TChar('+'), {TChar('\\'), TChar('+')}},
+		{TChar('.'), {TChar('\\'), TChar('.')}},
+		{TChar('['), {TChar('\\'), TChar('[')}},
+		{TChar('\\'), {TChar('\\'), TChar('\\')}},
+		{TChar(']'), {TChar('\\'), TChar(']')}},
+		{TChar('^'), {TChar('\\'), TChar('^')}},
+		{TChar('{'), {TChar('\\'), TChar('{')}},
+		{TChar('|'), {TChar('\\'), TChar('|')}},
+		{TChar('}'), {TChar('\\'), TChar('}')}}
 	};
 
-// ---
-const TWildcardReplacementItem *ReplacementEnd = 
-	Replacement + (sizeof(Replacement) / sizeof(TWildcardReplacementItem));
+	// ---
+	const TWildcardReplacementItem *ReplacementEnd = 
+		Replacement + (sizeof(Replacement) / sizeof(TWildcardReplacementItem));
 
-for(auto it = String_.begin(); it != String_.end(); ++it) {
-	if(THelper::isAlphaOrDigit(*it)) continue;
-	if(*it == TChar('?')) {
-		*it = TChar('.');
-		continue;
+	for(auto it = String_.begin(); it != String_.end(); ++it) {
+		if(THelper::isAlphaOrDigit(*it)) continue;
+		if(*it == TChar('?')) {
+			*it = TChar('.');
+			continue;
 		}
-	for(auto ReplIt = Replacement; ReplIt != ReplacementEnd; ++ReplIt) {
-		if(ReplIt->Source == *it) {
-			*it = ReplIt->Replacement[0];
-			it = String_.insert(it + 1, ReplIt->Replacement[1]);
-			break;
+		for(auto ReplIt = Replacement; ReplIt != ReplacementEnd; ++ReplIt) {
+			if(ReplIt->Source == *it) {
+				*it = ReplIt->Replacement[0];
+				it = String_.insert(it + 1, ReplIt->Replacement[1]);
+				break;
 			}
 		}
 	}
@@ -184,35 +138,35 @@ for(auto it = String_.begin(); it != String_.end(); ++it) {
 // -----------------------------------------------------------------------
 bool ParseMasks(const TFileNameChar *Masks_, TExcludePatterns &ExcludePatterns_)
 {
-std::set<TFileNameString> Patterns;
+	std::set<TFileNameString> Patterns;
 
-const TFileNameChar *End = Masks_ + FileNameStringLength(Masks_);
-while(true) {
-	const TFileNameChar *Delim = std::find(Masks_, End, TFileNameChar(','));
-	if(Delim == Masks_) {
-		Masks_++;
-		continue;
+	const TFileNameChar *End = Masks_ + tcpl::FileNameLength(Masks_);
+	while(true) {
+		const TFileNameChar *Delim = std::find(Masks_, End, TFileNameChar(','));
+		if(Delim == Masks_) {
+			Masks_++;
+			continue;
 		}
-	//
-	TFileNameString Value(Masks_, Delim);
-	TrimString(Value);
-	if(Value.empty()) continue;
-	//
-	if(Patterns.find(Value) != Patterns.end()) continue;
-	Patterns.insert(Value);
-	WildcardToRegexp(Value);
-	try {
-		ExcludePatterns_.push_back(std::move(TExcludePatterns::value_type(Value)));
+		//
+		TFileNameString Value(Masks_, Delim);
+		TrimString(Value);
+		if(Value.empty()) continue;
+		//
+		if(Patterns.find(Value) != Patterns.end()) continue;
+		Patterns.insert(Value);
+		WildcardToRegexp(Value);
+		try {
+			ExcludePatterns_.push_back(std::move(TExcludePatterns::value_type(Value)));
 		}
-	catch(std::regex_error&) {
-		std::cerr << "Invalid pattern: '" << FileNameStringToConsole(Value) << "'.";
-		return false;
+		catch(std::regex_error&) {
+			std::cerr << "Invalid pattern: '" << FileNameStringToConsole(Value) << "'.";
+			return false;
 		}
-	//
-	if(Delim == End) break;
-	Masks_ = Delim + 1;
+		//
+		if(Delim == End) break;
+		Masks_ = Delim + 1;
 	}
-return true;
+	return true;
 }
 
 // -----------------------------------------------------------------------
@@ -220,7 +174,7 @@ bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parame
 {
 for(int i = 1; i < Argc_; ++i) {
 	const TFileNameChar *Argument = Argv_[i];
-	size_t ArgLen = FileNameStringLength(Argument);
+	size_t ArgLen = tcpl::FileNameLength(Argument);
 	if(ArgLen < 2 || Argument[0] != TFileNameChar('-')) {
 		std::cerr << "Invalid argument: '" << FileNameStringToConsole(Argument) << "'.";
 		return false;
@@ -310,15 +264,14 @@ return true;
 
 // -----------------------------------------------------------------------
 const char *g_UsageMessage = 
-	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (https://github.com/vasyutin/smacro).\n"
 	"All the files being processed (except the files excluded from the processing with the -e switch) are assumed to be in UTF-8 encoding.\n"
 	"Example:\n"
-
 	#if defined(SMACRO_WINDOWS)
-		"smacro -i ..\\..\\example\\source -o ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png";
+		"\tsmacro -i ..\\..\\example\\source -o ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png\n\n"
 	#else
-		"smacro -i ../../example/source -o ../../build/doc_res -v ../../example/config -e *.txt,*.png";
+		"\tsmacro -i ../../example/source -o ../../build/doc_res -v ../../example/config -e *.txt,*.png\n\n"
 	#endif
+	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (https://github.com/vasyutin/smacro).";
 
 // -----------------------------------------------------------------------
 // Processes the folder with the documentation in the HTML format.
@@ -327,36 +280,19 @@ const char *g_UsageMessage =
 // -----------------------------------------------------------------------
 #if defined(SMACRO_MINGW)
 	int main(int Argc_, char *ArgvLocal8_[])
-#elif defined(SMACRO_WINDOWS)
+#elif defined(SMACRO_MSC)
 	int wmain(int Argc_, wchar_t *ArgvWcharT_[])
 #else
 	int main(int Argc_, char *ArgvUtf8_[])
 #endif
 {
-	struct THelper {
-		static bool normalizeFolderName(TFileNameString &Value_) {
-			assert(!Value_.empty());
-			#if defined(SMACRO_WINDOWS)
-				Value_ = AbsolutePath(Value_);
-				if(Value_.empty()) {
-					std::cerr << "Path '" << FileNameStringToConsole(Value_) << "' is invalid.";
-					return false;
-					}
-			#endif
-			if(Value_[Value_.size() - 1] != DIR_SEPARATOR)
-				Value_ += DIR_SEPARATOR;
-			return true;
-			}
-		};
-
-	// ---
 	TParameters Parameters;
 	LOCAL_BLOCK {
-		#if defined(SMACRO_MINGW) || defined(SMACRO_MSC)
+		#if defined(TCPL_MINGW) || defined(TCPL_MSC)
 			std::vector<const char*> ArgvPtrs(Argc_);
 			std::vector<std::string> ArgvStrings(Argc_);
 			for(int i = 0; i < Argc_; ++i) {
-				#if defined(SMACRO_MSC)
+				#if defined(TCPL_MSC)
 					WStringToUTF8(ArgvWcharT_[i], ArgvStrings[i]);
 				#else
 					WindowsLocalToUTF8(ArgvLocal8_[i], ArgvStrings[i]);
