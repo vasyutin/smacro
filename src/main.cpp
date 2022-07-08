@@ -63,18 +63,21 @@ bool ParseVariables(const TFileNameChar *FileName_, TParameters &Parameters_)
 	// ---
 	std::ifstream File(FileName_);
 	if(!File) {
-		std::cerr << "Can't open file: '" << tcpl::FileNameToConsoleString(FileName_) << "'.";
+		std::cerr << "Can't open file '" << tpcl::FileNameToConsoleString(FileName_) << "'." << std::endl;
 		return false;
 	}
 	//
+	size_t LineNo = 1;
 	std::string Line;
 	TProcessor Processor(Parameters_);
 	while(std::getline(File, Line)) {
 		// Удаляем пробелы в начале и конце строки
 		TrimString(Line);
 		if(Line.empty() || Line[0] == '#') continue;
-		if(!Processor.processString(Line)) 
+		if(!Processor.processString(Line)) {
+			std::cerr << "Error reading file '" << tpcl::FileNameToConsoleString(FileName_) << "' (line: " << LineNo << ")." << std::endl;
 			return false;
+		}
 	}
 	return true;
 }
@@ -174,7 +177,7 @@ bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parame
 {
 for(int i = 1; i < Argc_; ++i) {
 	const TFileNameChar *Argument = Argv_[i];
-	size_t ArgLen = tcpl::FileNameLength(Argument);
+	size_t ArgLen = tpcl::FileNameLength(Argument);
 	if(ArgLen < 2 || Argument[0] != TFileNameChar('-')) {
 		std::cerr << "Invalid argument: '" << FileNameStringToConsole(Argument) << "'.";
 		return false;
@@ -271,7 +274,7 @@ const char *g_UsageMessage =
 	#else
 		"\tsmacro -i ../../example/source -o ../../build/doc_res -v ../../example/config -e *.txt,*.png\n\n"
 	#endif
-	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (https://github.com/vasyutin/smacro).";
+	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).";
 
 // -----------------------------------------------------------------------
 // Processes the folder with the documentation in the HTML format.
@@ -303,11 +306,11 @@ const char *g_UsageMessage =
 		TCLAP::ValueArg<std::string> OutputFolder("o", "output", "The destination folder for the processed files", true, std::string(), "output folder", CmdParser);
 		TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
 			true, std::string(), "variables file", CmdParser);
-		TCLAP::ValueArg<std::string> ExcludeMasks("e", "exclude", 
-			"The masks of filenames to exclude from processing. This files are only copied to the output folder. The masks are separated by commas.", false, std::string(), "exclude masks", 
+		TCLAP::MultiArg<std::string> ExcludeMasks("e", "exclude",
+			"The mask of filename to exclude from processing. This files are only copied to the output folder.", false, std::string(), "exclude masks", 
 			CmdParser);
-		TCLAP::ValueArg<std::string> ExcludeMasks("g", "ignore",
-			"The masks of filenames to ignore. This files are not copied to the output folder. The masks are separated by commas.", false, std::string(), "ignore masks",
+		TCLAP::MultiArg<std::string> ExcludeMasks("g", "ignore",
+			"The mask of filename to ignore. This files are not copied to the output folder.", false, std::string(), "ignore masks",
 			CmdParser);
 
 		try {
@@ -321,15 +324,35 @@ const char *g_UsageMessage =
 		#if defined(TPCL_MSC)
 			Parameters.InputFolder = tpcl::Utf8ToWideString(InputFolder.getValue());
 			Parameters.OutputFolder = tpcl::Utf8ToWideString(OutputFolder.getValue());
+			if (!ParseVariables(tpcl::Utf8ToWideString(InputFolder.getValue()).c_str(), Parameters)) return false;
 		#else
 			Parameters.InputFolder = InputFolder.getValue();
 			Parameters.OutputFolder = OutputFolder.getValue();
-
+			if (!ParseVariables(InputFolder.getValue().c_str(), Parameters)) return false;
 		#endif
 
+		
 
 			TExcludePatterns ExcludePatterns, IgnorePatterns;
 
+
+
+			if (!ParseVariables(Argument + 2, Parameters_)) return false;
+				case TFileNameChar('v'):
+					if (!ParseVariables(Argument + 2, Parameters_)) return false;
+					break;
+				case TFileNameChar('e'):
+					if (!ParseMasks(Argument + 2, Parameters_.ExcludePatterns)) {
+						// The error message is provided by the callee.
+						return false;
+					}
+					break;
+				case TFileNameChar('d'):
+					if (!ParseMasks(Argument + 2, Parameters_.IgnorePatterns)) {
+						// The error message is provided by the callee.
+						return false;
+					}
+					break;
 
 
 
