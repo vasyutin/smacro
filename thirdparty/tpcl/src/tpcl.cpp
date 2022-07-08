@@ -1,11 +1,11 @@
-#include <tcpl.h>
+#include <tpcl.h>
 
-namespace tcpl {
+namespace tpcl {
 
 // -----------------------------------------------------------------------
 size_t FileNameLength(const TFileNameChar* FileName_)
 {
-#if TCPL_FILE_NAME_CHAR_TYPE == TCPL_WCHAR_T
+#if TPCL_FILE_NAME_CHAR_TYPE == TPCL_WCHAR_T
 	return wcslen(FileName_);
 #else
 	return strlen(FileName_);
@@ -15,8 +15,8 @@ size_t FileNameLength(const TFileNameChar* FileName_)
 // -----------------------------------------------------------------------
 void AppendSeparatorIfAbsent(TFileNameString& Value_)
 {
-	if(Value_[Value_.size() - 1] != TCPL_FS_SEPARATOR)
-		Value_ += TCPL_FS_SEPARATOR;
+	if(Value_[Value_.size() - 1] != TPCL_FS_SEPARATOR)
+		Value_ += TPCL_FS_SEPARATOR;
 }
 
 // -----------------------------------------------------------------------

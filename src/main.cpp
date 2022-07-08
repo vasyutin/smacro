@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
-#include <tcpl.h>
+#include <tpcl.h>
 #include <processor.h>
 #include <utils.h>
 
@@ -87,7 +87,7 @@ void WildcardToRegexp(_TString &String_)
 
 	struct THelper {
 		static inline bool isAlphaOrDigit(char Char_) {return isalpha(Char_) || isdigit(Char_);}
-		#if TCPL_FILE_NAME_CHAR_TYPE == TCPL_WCHAR_T
+		#if TPCL_FILE_NAME_CHAR_TYPE == TPCL_WCHAR_T
 			static inline bool isAlphaOrDigit(wchar_t Char_) {
 				return iswalpha(Char_) || iswdigit(Char_);
 			}
@@ -288,15 +288,11 @@ const char *g_UsageMessage =
 {
 	TParameters Parameters;
 	LOCAL_BLOCK {
-		#if defined(TCPL_MINGW) || defined(TCPL_MSC)
+		#if defined(TPCL_MSC)
 			std::vector<const char*> ArgvPtrs(Argc_);
 			std::vector<std::string> ArgvStrings(Argc_);
 			for(int i = 0; i < Argc_; ++i) {
-				#if defined(TCPL_MSC)
-					WStringToUTF8(ArgvWcharT_[i], ArgvStrings[i]);
-				#else
-					WindowsLocalToUTF8(ArgvLocal8_[i], ArgvStrings[i]);
-				#endif
+				tpcl::WideToUtf8(ArgvWcharT_[i], -1, ArgvStrings[i]);
 				ArgvPtrs[i] = ArgvStrings[i].c_str();
 				}
 			const char **ArgvUtf8_ = &ArgvPtrs[0];
@@ -321,20 +317,18 @@ const char *g_UsageMessage =
 			std::cerr << "error: " << Exeption_.error() << " for arg " << Exeption_.argId() << std::endl;
 			return RETCODE_INVALID_PARAMETERS;
 		}
-	}
 
-	#if defined(SMACRO_WINDOWS)
-		UTF8ToWString(InputFolder.getValue().c_str(), Parameters.InputFolder);
-		UTF8ToWString(OutputFolder.getValue().c_str(), Parameters.OutputFolder);
+		#if defined(TPCL_MSC)
+			Parameters.InputFolder = tpcl::Utf8ToWideString(InputFolder.getValue());
+			Parameters.OutputFolder = tpcl::Utf8ToWideString(OutputFolder.getValue());
+		#else
+			Parameters.InputFolder = InputFolder.getValue();
+			Parameters.OutputFolder = OutputFolder.getValue();
 
-		
-	#else
-		Parameters.InputFolder = InputFolder.getValue();
-
-	#endif
+		#endif
 
 
-	
+			TExcludePatterns ExcludePatterns, IgnorePatterns;
 
 
 

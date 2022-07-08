@@ -1,32 +1,32 @@
 #pragma once
 
-#include <tcpl-base.h>
+#include <tpclbase.h>
 #include <string>
 
-namespace tcpl {
+namespace tpcl {
 // -----------------------------------------------------------------------
-#if defined(TCPL_MSC)
-	#define TCPL_TO_FNSTR(S_) L ## S_
-	#define TCPL_FNSTR(S_) TCPL_TO_FNSTR(S_)
+#if defined(TPCL_MSC)
+	#define TPCL_TO_FNSTR(S_) L ## S_
+	#define TPCL_FNSTR(S_) TPCL_TO_FNSTR(S_)
 	typedef wchar_t TFileNameChar;
 	typedef std::wstring TFileNameString;
-	#define TCPL_FS_SEPARATOR L'\\'
-	#define TCPL_FILE_NAME_CHAR_TYPE TCPL_WCHAR_T
+	#define TPCL_FS_SEPARATOR L'\\'
+	#define TPCL_FILE_NAME_CHAR_TYPE TPCL_WCHAR_T
 #else
-	#define TCPL_FNSTR(S_) S_
+	#define TPCL_FNSTR(S_) S_
 	typedef char TFileNameChar;
 	typedef std::string TFileNameString;
-	#define TCPL_FS_SEPARATOR '/'
-	#define TCPL_FILE_NAME_CHAR_TYPE TCPL_CHAR
+	#define TPCL_FS_SEPARATOR '/'
+	#define TPCL_FILE_NAME_CHAR_TYPE TPCL_CHAR
 #endif
 
 // ----------------------------------------------------------------------------
-#if defined(TCPL_OS_WINDOWS)
+#if defined(TPCL_OS_WINDOWS)
 	// ---
 	// utf8 -> wchar_t
 	// ---
 	bool Utf8ToWide(const char* UTF8_, int UTF8Size_, std::wstring& String_);
-
+	inline bool Utf8ToWide(const char* UTF8_, std::wstring& String_) {return Utf8ToWide(UTF8_, -1, String_);}
 	inline bool Utf8ToWide(const std::string &UTF8_, std::wstring& String_) {return Utf8ToWide(UTF8_.c_str(), (int)UTF8_.size(), String_);}
 
 	std::wstring Utf8ToWideString(const char* UTF8_, int UTF8Size_, bool* Ok_ = nullptr) {
@@ -35,14 +35,14 @@ namespace tcpl {
 		if(Ok_) *Ok_ = IsOk;
 		return RetValue;
 	}
-
+	inline std::wstring Utf8ToWideString(const char* UTF8_, bool* Ok_ = nullptr) { return Utf8ToWideString(UTF8_, -1, Ok_); }
 	inline std::wstring Utf8ToWideString(const std::string& String_, bool* Ok_ = nullptr) { return Utf8ToWideString(String_.c_str(), (int)String_.size(), Ok_); }
 
 	// ---
 	// utf8 -> local 8 bit
 	// ---
 	bool Utf8ToLocal(const char* UTF8_, int UTF8Size_, std::string& String_);
-
+	inline bool Utf8ToLocal(const char* UTF8_, std::string& String_) {return Utf8ToLocal(UTF8_, -1, String_);}
 	inline bool Utf8ToLocal(const std::string& UTF8_, std::string& String_) { return Utf8ToLocal(UTF8_.c_str(), (int)UTF8_.size(), String_); }
 
 	std::string Utf8ToLocalString(const char* UTF8_, int UTF8Size_, bool* Ok_ = nullptr) {
@@ -51,14 +51,14 @@ namespace tcpl {
 		if (Ok_) *Ok_ = IsOk;
 		return RetValue;
 	}
-
+	inline std::string Utf8ToLocalString(const char* UTF8_, bool* Ok_ = nullptr) {return Utf8ToLocalString(UTF8_, -1, Ok_); }
 	inline std::string Utf8ToLocalString(const std::string& String_, bool* Ok_ = nullptr) { return Utf8ToLocalString(String_.c_str(), (int)String_.size(), Ok_); }
 
 	// ---
 	// wchar_t -> utf8
 	// ---
 	bool WideToUtf8(const wchar_t* Unicode_, int UnicodeSize_, std::string& String_);
-
+	inline bool WideToUtf8(const wchar_t* Unicode_, std::string& String_) { return bool WideToUtf8(Unicode_, -1, String_); }
 	inline bool WideToUtf8(const std::wstring &WString_, std::string& String_) {return WideToUtf8(WString_.c_str(), (int)WString_.size(), String_);}
 
 	std::string WideToUtf8String(const wchar_t* Unicode_, int UnicodeSize_, bool* Ok_ = nullptr) {
@@ -67,14 +67,14 @@ namespace tcpl {
 		if (Ok_) *Ok_ = IsOk;
 		return RetValue;
 	}
-
+	inline std::string WideToUtf8String(const wchar_t* Unicode_, bool* Ok_ = nullptr) { return WideToUtf8String(Unicode_, -1, Ok_); }
 	inline std::string WideToUtf8String(const std::wstring& String_, bool* Ok_ = nullptr) { return WideToUtf8String(String_.c_str(), (int)String_.size(), Ok_); }
 
 	// ---
 	// wchar_t -> local 8 bit
 	// ---
 	bool WideToLocal(const wchar_t* Unicode_, int UnicodeSize_, std::string& String_);
-
+	inline bool WideToLocal(const wchar_t* Unicode_, std::string& String_) { return WideToLocal(Unicode_, -1, String_); }
 	inline bool WideToLocal(const std::wstring& WString_, std::string& String_) { return WideToLocal(WString_.c_str(), (int)WString_.size(), String_); }
 
 	std::string WideToLocalString(const wchar_t* Unicode_, int UnicodeSize_, bool* Ok_ = nullptr) {
@@ -83,14 +83,14 @@ namespace tcpl {
 		if (Ok_) *Ok_ = IsOk;
 		return RetValue;
 	}
-
+	inline std::string WideToLocalString(const wchar_t* Unicode_, bool* Ok_ = nullptr) {return WideToLocalString(Unicode_, -1, Ok_);}
 	inline std::string WideToLocalString(const std::wstring& String_, bool* Ok_ = nullptr) { return WideToLocalString(String_.c_str(), (int)String_.size(), Ok_); }
 
 	// ---
 	// local 8 bit -> utf8
 	// ---
 	bool LocalToUtf8(const char* Local8Bit_, int Local8BitSize_, std::string& String_);
-
+	inline bool LocalToUtf8(const char* Local8Bit_, std::string& String_) {return LocalToUtf8(Local8Bit_, -1, String_);}
 	inline bool LocalToUtf8(const std::string& LocalString_, std::string& String_) { return LocalToUtf8(LocalString_.c_str(), (int)LocalString_.size(), String_); }
 
 	std::string LocalToUtf8String(const char* Local8Bit_, int Local8BitSize_, bool* Ok_ = nullptr) {
@@ -99,14 +99,14 @@ namespace tcpl {
 		if (Ok_) *Ok_ = IsOk;
 		return RetValue;
 	}
-
+	inline std::string LocalToUtf8String(const char* Local8Bit_, bool* Ok_ = nullptr) {return LocalToUtf8String(Local8Bit_, -1, Ok_);}
 	inline std::string LocalToUtf8String(const std::string& String_, bool* Ok_ = nullptr) { return LocalToUtf8String(String_.c_str(), (int)String_.size(), Ok_); }
 
 	// ---
 	// local 8 bit -> wchar_t
 	// ---
 	bool Utf8ToLocal(const char* UTF8_, int UTF8Size_, std::string& String_);
-
+	inline bool Utf8ToLocal(const char* UTF8_, std::string& String_) {return Utf8ToLocal(UTF8_, -1, String_);}
 	inline bool Utf8ToLocal(const std::string& UTF8_, std::string& String_) { return Utf8ToLocal(UTF8_.c_str(), (int)UTF8_.size(), String_); }
 
 	std::string Utf8ToLocalString(const char* UTF8_, int UTF8Size_, bool* Ok_ = nullptr) {
@@ -115,10 +115,13 @@ namespace tcpl {
 		if (Ok_) *Ok_ = IsOk;
 		return RetValue;
 	}
-
+	inline std::string Utf8ToLocalString(const char* UTF8_, int UTF8Size_, bool* Ok_ = nullptr) {return Utf8ToLocalString(UTF8_, -1, Ok_);}
 	inline std::string Utf8ToLocalString(const std::string& String_, bool* Ok_ = nullptr) { return Utf8ToLocalString(String_.c_str(), (int)String_.size(), Ok_); }
 
-	const char* FileNameToConsoleString(const TFileNameChar* Message_);
+	// ---
+	// FileName -> Default console encoding
+	// ---
+	const std::string& FileNameToConsoleString(const TFileNameChar* Message_);
 	const std::string& FileNameToConsoleString(const TFileNameString& Message_);
 
 #else
