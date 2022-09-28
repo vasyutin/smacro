@@ -139,130 +139,45 @@ void WildcardToRegexp(_TString &String_)
 } 
 
 // -----------------------------------------------------------------------
-bool ParseMasks(const TFileNameChar *Masks_, TExcludePatterns &ExcludePatterns_)
+bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &ExcludePatterns_)
 {
 	std::set<TFileNameString> Patterns;
-
-	const TFileNameChar *End = Masks_ + tcpl::FileNameLength(Masks_);
-	while(true) {
-		const TFileNameChar *Delim = std::find(Masks_, End, TFileNameChar(','));
-		if(Delim == Masks_) {
-			Masks_++;
-			continue;
+	for(const auto &Masks: MasksList_) {
+		#if defined(TPCL_MSC)
+			TFileNameString WMasks = tpcl::Utf8ToWideString(Masks);
+			const TFileNameChar *iMasks = WMasks.c_str();
+			const TFileNameChar *End = iMasks + WMasks.size();
+		#else
+			const TFileNameChar *iMasks = Masks.c_str();
+			const TFileNameChar *End = iMasks + Masks.size();
+		#endif
+		while(true) {
+			const TFileNameChar *Delim = std::find(iMasks, End, TFileNameChar(','));
+			if(Delim == iMasks) {
+				iMasks++;
+				continue;
+			}
+			//
+			TFileNameString Value(iMasks, Delim);
+			TrimString(Value);
+			if(Value.empty()) continue;
+			//
+			if(Patterns.find(Value) != Patterns.end()) continue;
+			Patterns.insert(Value);
+			WildcardToRegexp(Value);
+			try {
+				ExcludePatterns_.push_back(std::move(TExcludePatterns::value_type(Value)));
+			}
+			catch(std::regex_error&) {
+				std::cerr << "Invalid pattern: '" << FileNameStringToConsole(Value) << "'.";
+				return false;
+			}
+			//
+			if(Delim == End) break;
+			iMasks = Delim + 1;
 		}
-		//
-		TFileNameString Value(Masks_, Delim);
-		TrimString(Value);
-		if(Value.empty()) continue;
-		//
-		if(Patterns.find(Value) != Patterns.end()) continue;
-		Patterns.insert(Value);
-		WildcardToRegexp(Value);
-		try {
-			ExcludePatterns_.push_back(std::move(TExcludePatterns::value_type(Value)));
-		}
-		catch(std::regex_error&) {
-			std::cerr << "Invalid pattern: '" << FileNameStringToConsole(Value) << "'.";
-			return false;
-		}
-		//
-		if(Delim == End) break;
-		Masks_ = Delim + 1;
 	}
 	return true;
-}
-
-// -----------------------------------------------------------------------
-bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parameters_)
-{
-for(int i = 1; i < Argc_; ++i) {
-	const TFileNameChar *Argument = Argv_[i];
-	size_t ArgLen = tpcl::FileNameLength(Argument);
-	if(ArgLen < 2 || Argument[0] != TFileNameChar('-')) {
-		std::cerr << "Invalid argument: '" << FileNameStringToConsole(Argument) << "'.";
-		return false;
-		}
-	//
-	switch(Argument[1]) {
-	case TFileNameChar('i'):
-		Parameters_.InputFolder = Argument + 2;
-		break;
-	case TFileNameChar('o'):
-		Parameters_.OutputFolder = Argument + 2;
-		break;
-	case TFileNameChar('v'):
-		if(!ParseVariables(Argument + 2, Parameters_)) return false;
-		break;
-	case TFileNameChar('e'):
-		if(!ParseMasks(Argument + 2, Parameters_.ExcludePatterns)) {
-			// The error message is provided by the callee.
-			return false;
-			}
-		break;
-	case TFileNameChar('d'):
-		if(!ParseMasks(Argument + 2, Parameters_.IgnorePatterns)) {
-			// The error message is provided by the callee.
-			return false;
-			}
-		break;
-	default:
-		std::cerr << "Invalid switch: '" << FileNameStringToConsole(Argument) << "'.";
-		return false;
-		} // switch
-	}
-	
-if(Parameters_.InputFolder.empty() || Parameters_.OutputFolder.empty()) {
-	std::cerr << "No input or output folder was specified.";
-	return false;
-	}
-return true;	
-}
-
-// -----------------------------------------------------------------------
-bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_, 
-	TProcessor &Processor_)
-{
-if(!FolderExists(Input_.c_str())) {
-	std::cerr << "Error accessing folder '" << FileNameStringToConsole(Input_) << "'.";
-	return false;
-	}
-if(!FolderExists(Output_.c_str())) {
-	if(!MakePath(Output_.c_str())) {
-		std::cerr << "Can't create folder '" << FileNameStringToConsole(Output_) << "'.";
-		return false;
-		}
-	}
-
-std::vector<TFileNameString> Folders, Files;
-if(!FolderEntries(Input_.c_str(), Folders, Files)) {
-	std::cerr << "Can't get contents of the folder '" << FileNameStringToConsole(Input_) << "'.";
-	return false;
-	}
-for(auto it = Files.begin(); it != Files.end(); ++it) {
-	TFileNameString InputFile(Input_ + *it), OutputFile(Output_ + *it);
-	if(FileExists(OutputFile.c_str())) {
-		if(!RemoveFile(OutputFile.c_str())) {
-			std::cerr << "Can't delete file '" << FileNameStringToConsole(OutputFile) << "'.";
-			return false;
-			}
-		}
-	if(Processor_.isIgnored(*it)) continue;
-
-	bool Result = Processor_.isExcluded(*it)? 
-		DuplicateFile(InputFile.c_str(), OutputFile.c_str()):
-		Processor_.processFile(InputFile, OutputFile);
-	//
-	if(!Result) return false; /*{
-		std::cerr << "Can't write file '" << FileNameStringToConsole(OutputFile) << "'.";
-		return false;
-		}*/
-	}
-
-for(auto it = Folders.begin(); it != Folders.end(); ++it) {
-	if(!ProcessFolder(Input_ + *it + DIR_SEPARATOR, Output_ + *it + DIR_SEPARATOR, Processor_))
-		return false;
-	}
-return true;
 }
 
 // -----------------------------------------------------------------------
@@ -277,110 +192,139 @@ const char *g_UsageMessage =
 	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).";
 
 // -----------------------------------------------------------------------
+bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parameters_)
+{
+	#if defined(TPCL_MSC)
+		std::vector<const char*> ArgvPtrs(Argc_);
+		std::vector<std::string> ArgvStrings(Argc_);
+		for(int i = 0; i < Argc_; ++i) {
+			tpcl::WideToUtf8(Argv_[i], -1, ArgvStrings[i]);
+			ArgvPtrs[i] = ArgvStrings[i].c_str();
+			}
+		const char **ArgvUtf8_ = &ArgvPtrs[0];
+	#endif
+
+	TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "1.0");
+	TCLAP::ValueArg<std::string> InputFolder("i", "input", "The folder, containing documentation files to process", true, std::string(), "input folder", CmdParser);
+	TCLAP::ValueArg<std::string> OutputFolder("o", "output", "The destination folder for the processed files", true, std::string(), "output folder", CmdParser);
+	TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
+		true, std::string(), "variables file", CmdParser);
+	TCLAP::MultiArg<std::string> ExcludeMasks("e", "exclude",
+		"The mask of filename to exclude from processing. This files are only copied to the output folder.", false, "exclude masks", CmdParser);
+	TCLAP::MultiArg<std::string> IgnoreMasks("g", "ignore",
+		"The mask of filename to ignore. This files are not copied to the output folder.", false, "ignore masks", CmdParser);
+
+	try {
+		CmdParser.parse(Argc_, ArgvUtf8_);
+	}
+	catch (const TCLAP::ArgException& Exeption_) {
+		std::cerr << "error: " << Exeption_.error() << " for arg " << Exeption_.argId() << std::endl;
+		return false;
+	}
+
+	#if defined(TPCL_MSC)
+		tpcl::Utf8ToWide(InputFolder.getValue(), Parameters_.InputFolder);
+		tpcl::Utf8ToWide(OutputFolder.getValue(), Parameters_.OutputFolder);
+		if(!ParseVariables(tpcl::Utf8ToWideString(VariablesFile.getValue()).c_str(), Parameters_)) return false;
+	#else
+		Parameters.InputFolder = InputFolder.getValue();
+		Parameters.OutputFolder = OutputFolder.getValue();
+		if(!ParseVariables(VariablesFile.getValue().c_str(), Parameters)) return false;
+	#endif
+
+	tpcl::AppendSeparatorIfAbsent(Parameters_.InputFolder);
+	tpcl::AppendSeparatorIfAbsent(Parameters_.OutputFolder);
+
+	if(ExcludeMasks.isSet() && !ParseMasks(ExcludeMasks.getValue(), Parameters_.ExcludePatterns)) {
+		std::cerr << "Error specifying exclude mask." << std::endl;
+		return false;
+	}
+	if(IgnoreMasks.isSet() && !ParseMasks(IgnoreMasks.getValue(), Parameters_.IgnorePatterns)) {
+		std::cerr << "Error specifying ignore mask." << std::endl;
+		return false;
+	}
+	return true;	
+}
+
+// -----------------------------------------------------------------------
+bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_, TProcessor &Processor_)
+{
+	if(!FolderExists(Input_.c_str())) {
+		std::cerr << "Error accessing folder '" << FileNameStringToConsole(Input_) << "'.";
+		return false;
+	}
+	if(!FolderExists(Output_.c_str())) {
+		if(!MakePath(Output_.c_str())) {
+			std::cerr << "Can't create folder '" << FileNameStringToConsole(Output_) << "'.";
+			return false;
+		}
+	}
+
+	std::vector<TFileNameString> Folders, Files;
+	if(!FolderEntries(Input_.c_str(), Folders, Files)) {
+		std::cerr << "Can't get contents of the folder '" << FileNameStringToConsole(Input_) << "'.";
+		return false;
+	}
+	for(auto it = Files.begin(); it != Files.end(); ++it) {
+		TFileNameString InputFile(Input_ + *it), OutputFile(Output_ + *it);
+		if(FileExists(OutputFile.c_str())) {
+			if(!RemoveFile(OutputFile.c_str())) {
+				std::cerr << "Can't delete file '" << FileNameStringToConsole(OutputFile) << "'.";
+				return false;
+			}
+		}
+		if(Processor_.isIgnored(*it)) continue;
+
+		bool Result = Processor_.isExcluded(*it) ?
+			DuplicateFile(InputFile.c_str(), OutputFile.c_str()) :
+			Processor_.processFile(InputFile, OutputFile);
+		//
+		if(!Result) return false; /*{
+			std::cerr << "Can't write file '" << FileNameStringToConsole(OutputFile) << "'.";
+			return false;
+			}*/
+	}
+
+	for(auto it = Folders.begin(); it != Folders.end(); ++it) {
+		if(!ProcessFolder(Input_ + *it + DIR_SEPARATOR, Output_ + *it + DIR_SEPARATOR, Processor_))
+			return false;
+	}
+	return true;
+}
+
+// -----------------------------------------------------------------------
 // Processes the folder with the documentation in the HTML format.
 // Gets the file with the values of variables and processes the documentation's
 // files according to the values of the variables.
 // -----------------------------------------------------------------------
 #if defined(SMACRO_MINGW)
-	int main(int Argc_, char *ArgvLocal8_[])
+	int main(int Argc_, char *Argv_[]) // Local 8
 #elif defined(SMACRO_MSC)
-	int wmain(int Argc_, wchar_t *ArgvWcharT_[])
+	int wmain(int Argc_, wchar_t *Argv_[]) // wchar_t
 #else
-	int main(int Argc_, char *ArgvUtf8_[])
+	int main(int Argc_, char *Argv_[]) // utf 8
 #endif
 {
 	TParameters Parameters;
-	LOCAL_BLOCK {
-		#if defined(TPCL_MSC)
-			std::vector<const char*> ArgvPtrs(Argc_);
-			std::vector<std::string> ArgvStrings(Argc_);
-			for(int i = 0; i < Argc_; ++i) {
-				tpcl::WideToUtf8(ArgvWcharT_[i], -1, ArgvStrings[i]);
-				ArgvPtrs[i] = ArgvStrings[i].c_str();
-				}
-			const char **ArgvUtf8_ = &ArgvPtrs[0];
-		#endif
 
-		TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "1.0");
-		TCLAP::ValueArg<std::string> InputFolder("i", "input", "The folder, containing documentation files to process", true, std::string(), "input folder", CmdParser);
-		TCLAP::ValueArg<std::string> OutputFolder("o", "output", "The destination folder for the processed files", true, std::string(), "output folder", CmdParser);
-		TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
-			true, std::string(), "variables file", CmdParser);
-		TCLAP::MultiArg<std::string> ExcludeMasks("e", "exclude",
-			"The mask of filename to exclude from processing. This files are only copied to the output folder.", false, std::string(), "exclude masks", 
-			CmdParser);
-		TCLAP::MultiArg<std::string> ExcludeMasks("g", "ignore",
-			"The mask of filename to ignore. This files are not copied to the output folder.", false, std::string(), "ignore masks",
-			CmdParser);
+	if(!ParseParameters(Argc_, (const TFileNameChar**)Argv_, Parameters)) {
+		std::cerr << '\n' << std::endl;
+		return RETCODE_INVALID_PARAMETERS;
+	}
 
-		try {
-			CmdParser.parse(Argc_, ArgvUtf8_);
-		}
-		catch (const TCLAP::ArgException& Exeption_) {
-			std::cerr << "error: " << Exeption_.error() << " for arg " << Exeption_.argId() << std::endl;
-			return RETCODE_INVALID_PARAMETERS;
-		}
-
-		#if defined(TPCL_MSC)
-			Parameters.InputFolder = tpcl::Utf8ToWideString(InputFolder.getValue());
-			Parameters.OutputFolder = tpcl::Utf8ToWideString(OutputFolder.getValue());
-			if (!ParseVariables(tpcl::Utf8ToWideString(InputFolder.getValue()).c_str(), Parameters)) return false;
+	// Add SMACRO_ROOT var
+	std::string SmacroRoot("SMACRO_ROOT");
+	if(Parameters.Variables.find(SmacroRoot) == Parameters.Variables.end()) {
+		#if defined(SMACRO_WINDOWS)
+			Parameters.Variables[SmacroRoot] = FileNameStringToUtf8(Parameters.InputFolder);
 		#else
-			Parameters.InputFolder = InputFolder.getValue();
-			Parameters.OutputFolder = OutputFolder.getValue();
-			if (!ParseVariables(InputFolder.getValue().c_str(), Parameters)) return false;
+			Parameters.Variables[SmacroRoot] = Parameters.InputFolder;
 		#endif
-
-		
-
-			TExcludePatterns ExcludePatterns, IgnorePatterns;
-
-
-
-			if (!ParseVariables(Argument + 2, Parameters_)) return false;
-				case TFileNameChar('v'):
-					if (!ParseVariables(Argument + 2, Parameters_)) return false;
-					break;
-				case TFileNameChar('e'):
-					if (!ParseMasks(Argument + 2, Parameters_.ExcludePatterns)) {
-						// The error message is provided by the callee.
-						return false;
-					}
-					break;
-				case TFileNameChar('d'):
-					if (!ParseMasks(Argument + 2, Parameters_.IgnorePatterns)) {
-						// The error message is provided by the callee.
-						return false;
-					}
-					break;
-
-
-
-
-if(!ParseParameters(Argc_, (const TFileNameChar**)Argv_, Parameters)) {
-	std::cerr << '\n' << std::endl;
-	Usage();
-	return RETCODE_INVALID_PARAMETERS;
-	}
-//	
-if(!THelper::normalizeFolderName(Parameters.InputFolder) ||
-	!THelper::normalizeFolderName(Parameters.OutputFolder)) {
-	return RETCODE_INVALID_PARAMETERS;
 	}
 
-// Add SMACRO_ROOT var
-std::string SmacroRoot("SMACRO_ROOT");
-if(Parameters.Variables.find(SmacroRoot) == Parameters.Variables.end()) {
-	#if defined(SMACRO_WINDOWS)
-		Parameters.Variables[SmacroRoot] = FileNameStringToUtf8(Parameters.InputFolder);
-	#else
-		Parameters.Variables[SmacroRoot] = Parameters.InputFolder;
-	#endif
-	}
+	TProcessor Processor(Parameters);
+	if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor))
+		return RETCODE_PROCESS_ERROR;
 
-TProcessor Processor(Parameters);
-if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor))
-	return RETCODE_PROCESS_ERROR;
-
-return RETCODE_OK;
+	return RETCODE_OK;
 }
