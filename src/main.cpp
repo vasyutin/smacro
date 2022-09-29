@@ -23,6 +23,7 @@
 #include <tclap/CmdLine.h>
 
 #include <iostream>
+#include <vector>
 #include <set>
 
 #include <assert.h>
@@ -32,7 +33,7 @@ const int RETCODE_INVALID_PARAMETERS = 1;
 const int RETCODE_PROCESS_ERROR = 1;
 
 // -----------------------------------------------------------------------
-bool ParseVariables(const TFileNameChar *FileName_, TParameters &Parameters_)
+bool ParseVariables(const tpcl::TFileNameChar *FileName_, TParameters &Parameters_)
 {
 	struct TProcessor {
 		TParameters &m_Parameters;
@@ -90,7 +91,7 @@ void WildcardToRegexp(_TString &String_)
 
 	struct THelper {
 		static inline bool isAlphaOrDigit(char Char_) {return isalpha(Char_) || isdigit(Char_);}
-		#if TPCL_FILE_NAME_CHAR_TYPE == TPCL_WCHAR_T
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
 			static inline bool isAlphaOrDigit(wchar_t Char_) {
 				return iswalpha(Char_) || iswdigit(Char_);
 			}
@@ -141,24 +142,24 @@ void WildcardToRegexp(_TString &String_)
 // -----------------------------------------------------------------------
 bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &ExcludePatterns_)
 {
-	std::set<TFileNameString> Patterns;
+	std::set<tpcl::TFileNameString> Patterns;
 	for(const auto &Masks: MasksList_) {
-		#if defined(TPCL_MSC)
-			TFileNameString WMasks = tpcl::Utf8ToWideString(Masks);
-			const TFileNameChar *iMasks = WMasks.c_str();
-			const TFileNameChar *End = iMasks + WMasks.size();
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+			tpcl::TFileNameString WMasks = tpcl::Utf8ToWideString(Masks);
+			const tpcl::TFileNameChar *iMasks = WMasks.c_str();
+			const tpcl::TFileNameChar *End = iMasks + WMasks.size();
 		#else
-			const TFileNameChar *iMasks = Masks.c_str();
-			const TFileNameChar *End = iMasks + Masks.size();
+			const tpcl::TFileNameChar *iMasks = Masks.c_str();
+			const tpcl::TFileNameChar *End = iMasks + Masks.size();
 		#endif
 		while(true) {
-			const TFileNameChar *Delim = std::find(iMasks, End, TFileNameChar(','));
+			const tpcl::TFileNameChar *Delim = std::find(iMasks, End, tpcl::TFileNameChar(','));
 			if(Delim == iMasks) {
 				iMasks++;
 				continue;
 			}
 			//
-			TFileNameString Value(iMasks, Delim);
+			tpcl::TFileNameString Value(iMasks, Delim);
 			TrimString(Value);
 			if(Value.empty()) continue;
 			//
@@ -169,7 +170,7 @@ bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &Ex
 				ExcludePatterns_.push_back(std::move(TExcludePatterns::value_type(Value)));
 			}
 			catch(std::regex_error&) {
-				std::cerr << "Invalid pattern: '" << FileNameStringToConsole(Value) << "'.";
+				std::cerr << "Invalid pattern: '" << tpcl::FileNameToConsoleString(Value) << "'.";
 				return false;
 			}
 			//
@@ -184,17 +185,17 @@ bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &Ex
 const char *g_UsageMessage = 
 	"All the files being processed (except the files excluded from the processing with the -e switch) are assumed to be in UTF-8 encoding.\n"
 	"Example:\n"
-	#if defined(SMACRO_WINDOWS)
-		"\tsmacro -i ..\\..\\example\\source -o ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png\n\n"
+	#if defined(TPCL_OS_WINDOWS)
+		"\tsmacro -i ..\\..\\example\\source -o ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png -e *.jpg\n\n"
 	#else
-		"\tsmacro -i ../../example/source -o ../../build/doc_res -v ../../example/config -e *.txt,*.png\n\n"
+		"\tsmacro -i ../../example/source -o ../../build/doc_res -v ../../example/config -e *.txt,*.png -e *.jpg\n\n"
 	#endif
 	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).";
 
 // -----------------------------------------------------------------------
-bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parameters_)
+bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &Parameters_)
 {
-	#if defined(TPCL_MSC)
+	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
 		std::vector<const char*> ArgvPtrs(Argc_);
 		std::vector<std::string> ArgvStrings(Argc_);
 		for(int i = 0; i < Argc_; ++i) {
@@ -204,7 +205,7 @@ bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parame
 		const char **ArgvUtf8_ = &ArgvPtrs[0];
 	#endif
 
-	TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "1.0");
+	TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "2.0");
 	TCLAP::ValueArg<std::string> InputFolder("i", "input", "The folder, containing documentation files to process", true, std::string(), "input folder", CmdParser);
 	TCLAP::ValueArg<std::string> OutputFolder("o", "output", "The destination folder for the processed files", true, std::string(), "output folder", CmdParser);
 	TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
@@ -215,21 +216,25 @@ bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parame
 		"The mask of filename to ignore. This files are not copied to the output folder.", false, "ignore masks", CmdParser);
 
 	try {
-		CmdParser.parse(Argc_, ArgvUtf8_);
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+			CmdParser.parse(Argc_, ArgvUtf8_);
+		#else
+			CmdParser.parse(Argc_, Argv_);
+		#endif
 	}
 	catch (const TCLAP::ArgException& Exeption_) {
 		std::cerr << "error: " << Exeption_.error() << " for arg " << Exeption_.argId() << std::endl;
 		return false;
 	}
 
-	#if defined(TPCL_MSC)
+	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
 		tpcl::Utf8ToWide(InputFolder.getValue(), Parameters_.InputFolder);
 		tpcl::Utf8ToWide(OutputFolder.getValue(), Parameters_.OutputFolder);
 		if(!ParseVariables(tpcl::Utf8ToWideString(VariablesFile.getValue()).c_str(), Parameters_)) return false;
 	#else
-		Parameters.InputFolder = InputFolder.getValue();
-		Parameters.OutputFolder = OutputFolder.getValue();
-		if(!ParseVariables(VariablesFile.getValue().c_str(), Parameters)) return false;
+		Parameters_.InputFolder = InputFolder.getValue();
+		Parameters_.OutputFolder = OutputFolder.getValue();
+		if(!ParseVariables(VariablesFile.getValue().c_str(), Parameters_)) return false;
 	#endif
 
 	tpcl::AppendSeparatorIfAbsent(Parameters_.InputFolder);
@@ -247,36 +252,40 @@ bool ParseParameters(int Argc_, const TFileNameChar **Argv_, TParameters &Parame
 }
 
 // -----------------------------------------------------------------------
-bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_, TProcessor &Processor_)
+bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameString &Output_, TProcessor &Processor_)
 {
-	if(!FolderExists(Input_.c_str())) {
-		std::cerr << "Error accessing folder '" << FileNameStringToConsole(Input_) << "'.";
+	if(!tpcl::FolderExists(Input_.c_str())) {
+		std::cerr << "Error accessing folder '" << tpcl::FileNameToConsoleString(Input_) << "'.";
 		return false;
 	}
-	if(!FolderExists(Output_.c_str())) {
-		if(!MakePath(Output_.c_str())) {
-			std::cerr << "Can't create folder '" << FileNameStringToConsole(Output_) << "'.";
+	if(!tpcl::FolderExists(Output_.c_str())) {
+		if(!tpcl::CreatePath(Output_.c_str())) {
+			std::cerr << "Can't create folder '" << tpcl::FileNameToConsoleString(Output_) << "'.";
 			return false;
 		}
 	}
 
-	std::vector<TFileNameString> Folders, Files;
-	if(!FolderEntries(Input_.c_str(), Folders, Files)) {
-		std::cerr << "Can't get contents of the folder '" << FileNameStringToConsole(Input_) << "'.";
+	std::vector<tpcl::TFileNameString> Folders, Files;
+	if(!tpcl::FolderEntries(Input_.c_str(), Folders, Files)) {
+		std::cerr << "Can't get contents of the folder '" << tpcl::FileNameToConsoleString(Input_) << "'.";
 		return false;
 	}
+
+	std::sort(Folders.begin(), Folders.end(), std::locale());
+	std::sort(Files.begin(), Files.end(), std::locale());
+
 	for(auto it = Files.begin(); it != Files.end(); ++it) {
-		TFileNameString InputFile(Input_ + *it), OutputFile(Output_ + *it);
-		if(FileExists(OutputFile.c_str())) {
-			if(!RemoveFile(OutputFile.c_str())) {
-				std::cerr << "Can't delete file '" << FileNameStringToConsole(OutputFile) << "'.";
+		tpcl::TFileNameString InputFile(Input_ + *it), OutputFile(Output_ + *it);
+		if(tpcl::FileExists(OutputFile.c_str())) {
+			if(!tpcl::RemoveFile(OutputFile.c_str())) {
+				std::cerr << "Can't delete file '" << tpcl::FileNameToConsoleString(OutputFile) << "'.";
 				return false;
 			}
 		}
 		if(Processor_.isIgnored(*it)) continue;
 
 		bool Result = Processor_.isExcluded(*it) ?
-			DuplicateFile(InputFile.c_str(), OutputFile.c_str()) :
+			tpcl::DuplicateFile(InputFile.c_str(), OutputFile.c_str()) :
 			Processor_.processFile(InputFile, OutputFile);
 		//
 		if(!Result) return false; /*{
@@ -286,7 +295,7 @@ bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_
 	}
 
 	for(auto it = Folders.begin(); it != Folders.end(); ++it) {
-		if(!ProcessFolder(Input_ + *it + DIR_SEPARATOR, Output_ + *it + DIR_SEPARATOR, Processor_))
+		if(!ProcessFolder(Input_ + *it + TPCL_FS_SEPARATOR, Output_ + *it + TPCL_FS_SEPARATOR, Processor_))
 			return false;
 	}
 	return true;
@@ -297,17 +306,16 @@ bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_
 // Gets the file with the values of variables and processes the documentation's
 // files according to the values of the variables.
 // -----------------------------------------------------------------------
-#if defined(SMACRO_MINGW)
+#if defined(TPCL_MINGW)
 	int main(int Argc_, char *Argv_[]) // Local 8
-#elif defined(SMACRO_MSC)
+#elif defined(TPCL_MSC)
 	int wmain(int Argc_, wchar_t *Argv_[]) // wchar_t
 #else
 	int main(int Argc_, char *Argv_[]) // utf 8
 #endif
 {
 	TParameters Parameters;
-
-	if(!ParseParameters(Argc_, (const TFileNameChar**)Argv_, Parameters)) {
+	if(!ParseParameters(Argc_, (const tpcl::TFileNameChar**)Argv_, Parameters)) {
 		std::cerr << '\n' << std::endl;
 		return RETCODE_INVALID_PARAMETERS;
 	}
@@ -315,8 +323,12 @@ bool ProcessFolder(const TFileNameString &Input_, const TFileNameString &Output_
 	// Add SMACRO_ROOT var
 	std::string SmacroRoot("SMACRO_ROOT");
 	if(Parameters.Variables.find(SmacroRoot) == Parameters.Variables.end()) {
-		#if defined(SMACRO_WINDOWS)
-			Parameters.Variables[SmacroRoot] = FileNameStringToUtf8(Parameters.InputFolder);
+		#if defined(TPCL_OS_WINDOWS)
+			#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+				Parameters.Variables[SmacroRoot] = tpcl::WideToUtf8String(Parameters.InputFolder);
+			#else
+				Parameters.Variables[SmacroRoot] = tpcl::LocalToUtf8String(Parameters.InputFolder);
+			#endif
 		#else
 			Parameters.Variables[SmacroRoot] = Parameters.InputFolder;
 		#endif

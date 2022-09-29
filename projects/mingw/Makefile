@@ -2,7 +2,7 @@
 CC=gcc
 CXX=g++
 
-INCLUDES=-I../../src
+INCLUDES=-I../../src -I../../thirdparty/tclap/include -I../../thirdparty/tpcl/src
 OPTIMIZE=-O3
 CFLAGS=$(OPTIMIZE) $(INCLUDES) -Wall -Wextra -MMD
 CXXFLAGS=-std=c++14 $(OPTIMIZE) $(INCLUDES) -Wall -Wextra -Wno-psabi -MMD
@@ -19,16 +19,19 @@ ifeq ($(debug), true)
 	OBJ_DIR=../../build/debug/obj
 	BIN_DIR_W=..\..\build\debug
 	OBJ_DIR_W=..\..\build\debug\obj
+	OBJ_DIR_TPCL_W=..\..\build\debug\obj\tpcl
 else
 	BIN_DIR=../../build/release
 	APP_BIN=../../build/release/$(APP_BIN_NAME)
 	OBJ_DIR=../../build/release/obj
 	BIN_DIR_W=..\..\build\release
 	OBJ_DIR_W=..\..\build\release\obj
+	OBJ_DIR_TPCL_W=..\..\build\release\obj\tpcl
 endif
 
-MKDIR_OBJ=@if not exist $(OBJ_DIR_W) mkdir $(OBJ_DIR_W) 2> nul
 MKDIR_BIN=@if not exist $(BIN_DIR_W) mkdir $(BIN_DIR_W) 2> nul
+MKDIR_OBJ=@if not exist $(OBJ_DIR_W) mkdir $(OBJ_DIR_W) 2> nul
+MKDIR_OBJ_TPCL=@if not exist $(OBJ_DIR_TPCL_W) mkdir $(OBJ_DIR_TPCL_W) 2> nul
 
 #-----------------------------------------------------------------
 # Default target
@@ -45,13 +48,20 @@ APP_SRCS=../../src/main.cpp \
 	../../src/utils.cpp
 APP_OBJS=$(subst ../../src/,$(OBJ_DIR)/,$(subst .cpp,.o,$(APP_SRCS)))
 
+TPCL_SRCS=../../thirdparty/tpcl/src/tpcl.cpp
+TPCL_OBJS=$(subst ../../thirdparty/tpcl/src/,$(OBJ_DIR)/tpcl/,$(subst .cpp,.o,$(TPCL_SRCS)))
+
 $(OBJ_DIR)/%.o: ../../src/%.cpp
 	$(MKDIR_OBJ)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(APP_BIN): $(APP_OBJS)
+$(OBJ_DIR)/tpcl/%.o: ../../thirdparty/tpcl/src/%.cpp
+	$(MKDIR_OBJ_TPCL)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(APP_BIN): $(APP_OBJS) $(TPCL_OBJS)
 	$(MKDIR_BIN)
-	$(CXX) $(LDFLAGS) -o $(APP_BIN) $(LDLIBS) $(APP_OBJS)
+	$(CXX) $(LDFLAGS) -o $(APP_BIN) $(LDLIBS) $(APP_OBJS) $(TPCL_OBJS)
 ifneq ($(debug), true)
 	strip $(APP_BIN)
 endif
@@ -61,7 +71,7 @@ app-binary: $(APP_BIN)
 #-----------------------------------------------------------------
 # Dependencies (recompile when headers have changed)
 #-----------------------------------------------------------------
-DEPENDENCIES=$(APP_OBJS:%.o=%.d)
+DEPENDENCIES=$(APP_OBJS:%.o=%.d) $(TPCL_OBJS:%.o=%.d)
 
 -include $(DEPENDENCIES)
 

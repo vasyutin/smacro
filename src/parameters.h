@@ -18,7 +18,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "globals.h"
+#include <tpcl.h>
 
 #include <vector>
 #include <regex>
@@ -26,7 +26,7 @@
 
 typedef std::unordered_map<std::string, std::string> TVariables;
 
-#if defined(SMACRO_WINDOWS)
+#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
 	typedef std::vector<std::wregex> TExcludePatterns;
 #else
 	typedef std::vector<std::regex> TExcludePatterns;
@@ -34,8 +34,8 @@ typedef std::unordered_map<std::string, std::string> TVariables;
 
 // -----------------------------------------------------------------------
 struct TParameters {
-	TFileNameString InputFolder;
-	TFileNameString OutputFolder;
+	tpcl::TFileNameString InputFolder;
+	tpcl::TFileNameString OutputFolder;
 	TVariables Variables;
 	TExcludePatterns ExcludePatterns, IgnorePatterns;
 	};

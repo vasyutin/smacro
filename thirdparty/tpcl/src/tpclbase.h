@@ -1,5 +1,24 @@
 #pragma once
 
+/*
+* This file is part of Tiny Platfrom Crossing Library (TPCL).
+*
+* Written by Sergey Vasyutin (in[at]vasyut.in)
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will `be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this software. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #define TPCL_LITTLE_ENDIAN 1234  /// IBM PC (lower byte, 2 byte, 3 byte, 4 byte)
 #define TPCL_BIG_ENDIAN    4321  /// Network order (4 byte, 3 byte, 2 byte, lower byte)
 

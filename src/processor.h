@@ -19,37 +19,37 @@
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "parameters.h"
+#include <parameters.h>
 #include <fstream>
 
 // -----------------------------------------------------------------------
 class TProcessor {
 public:
 	TProcessor(const TParameters &Parameters_);
-	bool processFile(const TFileNameString &Input_, const TFileNameString &Output_);
-	bool isExcluded(const TFileNameString &FileName_) const {
+	bool processFile(const tpcl::TFileNameString &Input_, const tpcl::TFileNameString &Output_);
+	bool isExcluded(const tpcl::TFileNameString &FileName_) const {
 		return matchesPatterns(FileName_, m_ExcludePatterns);
 		}
-	bool isIgnored(const TFileNameString &FileName_) const {
+	bool isIgnored(const tpcl::TFileNameString &FileName_) const {
 		return matchesPatterns(FileName_, m_IgnorePatterns);
 		}
 
 private:
 	struct TProcessData {
-		TProcessData(const TFileNameString &InputFile_, const TFileNameString &OutputFile_);
+		TProcessData(const tpcl::TFileNameString &InputFile_, const tpcl::TFileNameString &OutputFile_);
 		bool initialized() const;
 		const std::string &errorMessage() const {return ErrorMessage;}
 
 		std::vector<std::unique_ptr<std::ifstream> > Input;
 		// Track included files to prevent cyclic includes
-		std::vector<TFileNameString> InputFiles;
+		std::vector<tpcl::TFileNameString> InputFiles;
 		std::vector<unsigned> CurrentLines;
 
 		std::ofstream Output;
-		const TFileNameString &OutputFile;
+		const tpcl::TFileNameString &OutputFile;
 		std::string ErrorMessage;
 
-		const TFileNameString& inputFile() const {return InputFiles.back();}
+		const tpcl::TFileNameString& inputFile() const {return InputFiles.back();}
 		unsigned lineNo() const {return CurrentLines.back();}
 		};
 
@@ -107,5 +107,5 @@ private:
 	static std::string::const_iterator firstNonSpace(std::string::const_iterator Begin_, 
 		std::string::const_iterator End_);
 
-	static bool matchesPatterns(const TFileNameString &FileName_, const TExcludePatterns &Patterns_);
+	static bool matchesPatterns(const tpcl::TFileNameString &FileName_, const TExcludePatterns &Patterns_);
 	};

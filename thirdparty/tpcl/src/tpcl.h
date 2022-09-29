@@ -1,7 +1,27 @@
 #pragma once
 
+/*
+* This file is part of Tiny Platfrom Crossing Library (TPCL).
+*
+* Written by Sergey Vasyutin (in[at]vasyut.in)
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will `be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this software. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <tpclbase.h>
 #include <string>
+#include <vector>
 
 namespace tpcl {
 // -----------------------------------------------------------------------
@@ -11,13 +31,13 @@ namespace tpcl {
 	typedef wchar_t TFileNameChar;
 	typedef std::wstring TFileNameString;
 	#define TPCL_FS_SEPARATOR L'\\'
-	#define TPCL_FILE_NAME_CHAR_TYPE TPCL_WCHAR_T
+	#define TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T
 #else
 	#define TPCL_FNSTR(S_) S_
 	typedef char TFileNameChar;
 	typedef std::string TFileNameString;
 	#define TPCL_FS_SEPARATOR '/'
-	#define TPCL_FILE_NAME_CHAR_TYPE TPCL_CHAR
+	#define TPCL_FILE_NAME_CHAR_TYPE_IS_CHAR
 #endif
 
 // ----------------------------------------------------------------------------
@@ -105,17 +125,17 @@ namespace tpcl {
 	// ---
 	// local 8 bit -> wchar_t
 	// ---
-	bool LocalToWide(const char* UTF8_, int UTF8Size_, std::wstring& String_);
-	inline bool LocalToWide(const char* UTF8_, std::wstring& String_) {return LocalToWide(UTF8_, -1, String_);}
-	inline bool LocalToWide(const std::string& UTF8_, std::wstring& String_) { return LocalToWide(UTF8_.c_str(), (int)UTF8_.size(), String_); }
+	bool LocalToWide(const char* Local8Bit_, int Local8BitSize_, std::wstring& String_);
+	inline bool LocalToWide(const char* Local8Bit_, std::wstring& String_) {return LocalToWide(Local8Bit_, -1, String_);}
+	inline bool LocalToWide(const std::string& Local8Bit_, std::wstring& String_) { return LocalToWide(Local8Bit_.c_str(), (int)Local8Bit_.size(), String_); }
 
-	inline std::wstring LocalToWideString(const char* UTF8_, int UTF8Size_, bool* Ok_ = nullptr) {
+	inline std::wstring LocalToWideString(const char* Local8Bit_, int Local8BitSize_, bool* Ok_ = nullptr) {
 		std::wstring RetValue;
-		bool IsOk = Utf8ToWide(UTF8_, UTF8Size_, RetValue);
+		bool IsOk = Utf8ToWide(Local8Bit_, Local8BitSize_, RetValue);
 		if (Ok_) *Ok_ = IsOk;
 		return RetValue;
 	}
-	inline std::wstring LocalToWideString(const char* UTF8_, bool* Ok_ = nullptr) {return LocalToWideString(UTF8_, -1, Ok_);}
+	inline std::wstring LocalToWideString(const char* Local8Bit_, bool* Ok_ = nullptr) {return LocalToWideString(Local8Bit_, -1, Ok_);}
 	inline std::wstring LocalToWideString(const std::string& String_, bool* Ok_ = nullptr) { return LocalToWideString(String_.c_str(), (int)String_.size(), Ok_); }
 
 	// ---
@@ -133,6 +153,13 @@ namespace tpcl {
 
 // ----------------------------------------------------------------------------
 size_t FileNameLength(const TFileNameChar *FileName);
+
 void AppendSeparatorIfAbsent(TFileNameString& Value_);
+bool FolderExists(const TFileNameChar *Folder_);
+bool CreatePath(const TFileNameChar *Path_);
+bool FolderEntries(const TFileNameChar *Folder_, std::vector<TFileNameString> &Folders_, std::vector<TFileNameString> &Files_);
+bool FileExists(const TFileNameChar *File_);
+bool RemoveFile(const TFileNameChar *File_);
+bool DuplicateFile(const TFileNameChar *Src_, const TFileNameChar *Dst_);
 
 } // namespace tpcl

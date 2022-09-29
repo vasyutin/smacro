@@ -16,16 +16,16 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "processor.h"
-#include "utils.h"
-#include "string-stream.h"
+#include <processor.h>
+#include <utils.h>
+#include <string-stream.h>
 
 #include <iostream>
 #include <cctype>
 
 #include <assert.h>
 
-#if !defined(SMACRO_WINDOWS)
+#if !defined(TPCL_OS_WINDOWS)
 	#include <stddef.h>
 #endif
 
@@ -45,111 +45,102 @@ TProcessor::TProcessor(const TParameters &Parameters_):
 	m_CommentRegExp("[/][/]"),
 	m_IncludeRegExp("#include\\s*[<]([^>]*)[>]")
 {
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::String;
-m_LexemeRegExps.back().RegExp.assign("[\"]([^\"]*)[\"]");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::String;
+	m_LexemeRegExps.back().RegExp.assign("[\"]([^\"]*)[\"]");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::Variable;
-m_LexemeRegExps.back().RegExp.assign("[A-Za-z_][A-Za-z_0-9]*");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::Variable;
+	m_LexemeRegExps.back().RegExp.assign("[A-Za-z_][A-Za-z_0-9]*");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::Defined;
-m_LexemeRegExps.back().RegExp.assign("defined\\s*[(]\\s*([A-Za-z_][A-Za-z_0-9]*)\\s*[)]");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::Defined;
+	m_LexemeRegExps.back().RegExp.assign("defined\\s*[(]\\s*([A-Za-z_][A-Za-z_0-9]*)\\s*[)]");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::Not;
-m_LexemeRegExps.back().RegExp.assign("!");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::Not;
+	m_LexemeRegExps.back().RegExp.assign("!");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::Eq;
-m_LexemeRegExps.back().RegExp.assign("==");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::Eq;
+	m_LexemeRegExps.back().RegExp.assign("==");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::Neq;
-m_LexemeRegExps.back().RegExp.assign("!=");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::Neq;
+	m_LexemeRegExps.back().RegExp.assign("!=");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::Less;
-m_LexemeRegExps.back().RegExp.assign("<");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::Less;
+	m_LexemeRegExps.back().RegExp.assign("<");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::Greater;
-m_LexemeRegExps.back().RegExp.assign(">");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::Greater;
+	m_LexemeRegExps.back().RegExp.assign(">");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::LessOrEqual;
-m_LexemeRegExps.back().RegExp.assign("<=");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::LessOrEqual;
+	m_LexemeRegExps.back().RegExp.assign("<=");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::GreaterOrEqual;
-m_LexemeRegExps.back().RegExp.assign(">");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::GreaterOrEqual;
+	m_LexemeRegExps.back().RegExp.assign(">");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::OpenBracket;
-m_LexemeRegExps.back().RegExp.assign("[(]");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::OpenBracket;
+	m_LexemeRegExps.back().RegExp.assign("[(]");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::CloseBracket;
-m_LexemeRegExps.back().RegExp.assign("[)]");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::CloseBracket;
+	m_LexemeRegExps.back().RegExp.assign("[)]");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::And;
-m_LexemeRegExps.back().RegExp.assign("[&][&]");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::And;
+	m_LexemeRegExps.back().RegExp.assign("[&][&]");
 
-m_LexemeRegExps.push_back(TLexemeRegExp());
-m_LexemeRegExps.back().Type = TLexemeType::Or;
-m_LexemeRegExps.back().RegExp.assign("[|][|]");
+	m_LexemeRegExps.push_back(TLexemeRegExp());
+	m_LexemeRegExps.back().Type = TLexemeType::Or;
+	m_LexemeRegExps.back().RegExp.assign("[|][|]");
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::matchesPatterns(const TFileNameString &FileName_, const TExcludePatterns &Patterns_)
+bool TProcessor::matchesPatterns(const tpcl::TFileNameString &FileName_, const TExcludePatterns &Patterns_)
 {
-for(auto p_it = Patterns_.begin(); p_it != Patterns_.end(); ++p_it) {
-	if(std::regex_match(FileName_, *p_it)) return true;
+	for(auto p_it = Patterns_.begin(); p_it != Patterns_.end(); ++p_it) {
+		if(std::regex_match(FileName_, *p_it)) return true;
 	}
-return false;
+	return false;
 }
 
 // -----------------------------------------------------------------------
 bool TProcessor::isOperator(TResult Result_)
 {
-return Result_ == TResult::OperatorIf || Result_ == TResult::OperatorElif ||
-	Result_ == TResult::OperatorElse || Result_ == TResult::OperatorEndif;
+	return Result_ == TResult::OperatorIf || Result_ == TResult::OperatorElif ||
+		Result_ == TResult::OperatorElse || Result_ == TResult::OperatorEndif;
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TProcessData::TProcessData(const TFileNameString &InputFile_, 
-	const TFileNameString &OutputFile_):
+TProcessor::TProcessData::TProcessData(const tpcl::TFileNameString &InputFile_, const tpcl::TFileNameString &OutputFile_):
 	OutputFile(OutputFile_)
 {
-assert(Input.empty());
-std::unique_ptr<std::ifstream> Stream(new std::ifstream);
-#if defined(__MINGW32__) || defined(__MINGW64__)
-	Stream->open(WStringToWindowsLocal(InputFile_), std::ios::binary);
-#else
+	assert(Input.empty());
+	std::unique_ptr<std::ifstream> Stream(new std::ifstream);
 	Stream->open(InputFile_, std::ios::binary);
-#endif
-if(!(*Stream)) {
-	ErrorMessage = "Can't open input file: '";
-	ErrorMessage += FileNameStringToConsole(InputFile_);
-	ErrorMessage += "'.";
-	return;
+	if(!(*Stream)) {
+		ErrorMessage = "Can't open input file: '";
+		ErrorMessage += tpcl::FileNameToConsoleString(InputFile_);
+		ErrorMessage += "'.";
+		return;
 	}
-Input.push_back(std::move(Stream));
-InputFiles.push_back(InputFile_);
-CurrentLines.push_back(0);
+	Input.push_back(std::move(Stream));
+	InputFiles.push_back(InputFile_);
+	CurrentLines.push_back(0);
 
-#if defined(__MINGW32__) || defined(__MINGW64__)
-	Output.open(WStringToWindowsLocal(OutputFile_), std::ios::binary);
-#else
 	Output.open(OutputFile_, std::ios::binary);
-#endif
-if(!Output) {
-	ErrorMessage = "Can't open output file: '";
-	ErrorMessage += FileNameStringToConsole(OutputFile_);
-	ErrorMessage += "'.";
-	return;
+	if(!Output) {
+		ErrorMessage = "Can't open output file: '";
+		ErrorMessage += tpcl::FileNameToConsoleString(OutputFile_);
+		ErrorMessage += "'.";
+		return;
 	}
 }
 
@@ -160,7 +151,7 @@ return !Input.empty() && Input.back()->is_open() && Output.is_open();
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::processFile(const TFileNameString &Input_, const TFileNameString &Output_)
+bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TFileNameString &Output_)
 {
 TProcessData Data(Input_, Output_);
 if(!Data.initialized()) {
@@ -173,7 +164,7 @@ while(true) {
 	TResult Result = readNextLine(Data, Line, true);
 	if(Result == TResult::OK) {
 		if(!Data.Output.write(Line.c_str(), Line.size())) {
-			std::cerr << "Error writing file '" << FileNameStringToConsole(Output_) << "'.";
+			std::cerr << "Error writing file '" << tpcl::FileNameToConsoleString(Output_) << "'.";
 			return false;
 			}
 		continue;
@@ -186,14 +177,14 @@ while(true) {
 	assert(isOperator(Result));
 	// There can be only #if
 	if(Result != TResult::OperatorIf) {
-		std::cerr << "Expected #if: " << FileNameStringToConsole(Input_) << ':' << Data.lineNo() <<
+		std::cerr << "Expected #if: " << tpcl::FileNameToConsoleString(Input_) << ':' << Data.lineNo() <<
 			".";
 		return false;
 		}
 	//
 	Result = processOperator(Data, Line, false);
 	if(Result == TResult::WriteError) {
-		std::cerr << "Can't write file: '" << FileNameStringToConsole(Output_) << "'.";
+		std::cerr << "Can't write file: '" << tpcl::FileNameToConsoleString(Output_) << "'.";
 		return false;
 		}
 	else if(Result != TResult::OK) {
@@ -267,19 +258,19 @@ while(true) {
 			if(!Match[1].length()) return TResult::SyntaxError;
 
 			std::unique_ptr<std::ifstream> Stream(new std::ifstream);
-			#if defined(_MSC_VER)
-				TFileNameString FileName(Utf8ToFileNameString(std::string(Match[1].first, Match[1].second)));
-				Stream->open(FileName, std::ios::binary);
-			#elif defined(__MINGW32__) || defined(__MINGW64__)
-				TFileNameString FileName(Utf8ToFileNameString(std::string(Match[1].first, Match[1].second)));
-				Stream->open(WStringToWindowsLocal(FileName), std::ios::binary);
+			#if defined(TPCL_OS_WINDOWS)
+				#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+					tpcl::TFileNameString FileName(tpcl::Utf8ToWideString(std::string(Match[1].first, Match[1].second)));
+				#else
+					tpcl::TFileNameString FileName(tpcl::Utf8ToLocalString(std::string(Match[1].first, Match[1].second)));
+				#endif
 			#else
 				std::string FileName(Match[1].first, Match[1].second);
-				Stream->open(FileName, std::ios::binary);
 			#endif
+			Stream->open(FileName, std::ios::binary);
 			if(!(*Stream)) {
-				Data_.ErrorMessage  << "Can't include file '" << FileNameStringToConsole(FileName) << "': " <<
-					FileNameStringToConsole(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
+				Data_.ErrorMessage  << "Can't include file '" << tpcl::FileNameToConsoleString(FileName) << "': " <<
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
 				return TResult::SyntaxError;
 				}
 			Data_.Input.push_back(std::move(Stream));
@@ -316,7 +307,7 @@ while(!Line_.empty() && *(Line_.end() - 1) == '\\') {
 	std::string NewLine;
 	if(!std::getline(*Data_.Input.back(), NewLine)) {
 		Data_.ErrorMessage  << "Line ends with '\\' but next string is not present: " << 
-			FileNameStringToConsole(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
+			tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
 		return TResult::SyntaxError;
 		}
 	(Data_.CurrentLines.back())++;
@@ -333,14 +324,14 @@ if(std::regex_search(Line_.cbegin(), Line_.cend(), Match, m_CommentRegExp)) {
 if(Result == TResult::OperatorEndif || Result == TResult::OperatorElse) {
 	if(!Line_.empty()) {
 		Data_.ErrorMessage << "Unexpected symbols after keyword: " <<
-			FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
+			tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
 		return TResult::SyntaxError;
 		}
 	}
 else if(Result == TResult::OperatorIf || Result == TResult::OperatorElif) {
 	if(Line_.empty()) {
 		Data_.ErrorMessage << "Expression expected after keyword: " << 
-			FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
+			tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
 		return TResult::SyntaxError;
 		}
 	}
@@ -381,7 +372,7 @@ bool ExpectingEndifOnly = false;
 TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: (!ValidExpressionFound));
 while(true) {
 	if(Result == TResult::EndOfFile) {
-		Data_.ErrorMessage << "Expected #endif: " << FileNameStringToConsole(Data_.inputFile()) << 
+		Data_.ErrorMessage << "Expected #endif: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
 			':' << Data_.lineNo();
 		return TResult::SyntaxError;
 		}
@@ -396,7 +387,7 @@ while(true) {
 		}
 	else if(Result == TResult::OperatorElif) {
 		if(ExpectingEndifOnly) {
-			Data_.ErrorMessage << "Unexpected #elif: " << FileNameStringToConsole(Data_.inputFile()) 
+			Data_.ErrorMessage << "Unexpected #elif: " << tpcl::FileNameToConsoleString(Data_.inputFile()) 
 				<< ':' << Data_.lineNo();
 			return TResult::SyntaxError;
 			}
@@ -412,7 +403,7 @@ while(true) {
 		}
 	else if(Result == TResult::OperatorElse) {
 		if(ExpectingEndifOnly) {
-			Data_.ErrorMessage << "Unexpected #else: " << FileNameStringToConsole(Data_.inputFile()) 
+			Data_.ErrorMessage << "Unexpected #else: " << tpcl::FileNameToConsoleString(Data_.inputFile()) 
 				<< ':' << Data_.lineNo();
 			return TResult::SyntaxError;
 			}
@@ -570,7 +561,7 @@ struct THelper {
 				TVariables::const_iterator iVar = This_.m_Variables.find(it->Value);
 				if(iVar == This_.m_Variables.end()) {
 					Data_.ErrorMessage << "Undefined variable '" << 
-						FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
+						tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
 					return false;
 					}
 				Value.Type = TValueType::String;
@@ -667,7 +658,7 @@ struct THelper {
 					}
 				if(!Found) {
 					Data_.ErrorMessage << "Open bracket expected in expression" << 
-						FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
+						tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
 					return false;
 					}
 				}
@@ -681,7 +672,7 @@ struct THelper {
 					while(operationPrecedence(Stack.top().Type) >= Precedence) {
 						if(Stack.top().Type == TValueType::OpenBracket) {
 							Data_.ErrorMessage << "Unpaired bracket" << 
-								FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
+								tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
 							return false;
 							}
 						Result.push_back(Stack.top());
@@ -696,7 +687,7 @@ struct THelper {
 		while(!Stack.empty()) {
 			if(Stack.top().Type == TValueType::OpenBracket) {
 				Data_.ErrorMessage << "Unpaired bracket" << 
-					FileNameStringToConsole(Data_.inputFile()) << ':' << Data_.lineNo();
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
 				return false;
 				}
 			Result.push_back(Stack.top());
@@ -864,12 +855,12 @@ struct THelper {
 //
 std::vector<TLexeme> Lexemes;
 if(!THelper::lexAnalysis(*this, Line_, Lexemes)) {
-	Data_.ErrorMessage << "Error in expression: " << FileNameStringToConsole(Data_.inputFile()) << 
+	Data_.ErrorMessage << "Error in expression: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
 		':' << Data_.lineNo();
 	return false;
 	}
 if(Lexemes.empty()) {
-	Data_.ErrorMessage << "Expression expected: " << FileNameStringToConsole(Data_.inputFile()) << 
+	Data_.ErrorMessage << "Expression expected: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
 		':' << Data_.lineNo();
 	return false;
 	}
@@ -890,7 +881,7 @@ if(!THelper::toVMValues(*this, Lexemes, Values, Data_) ||
 	}
 
 if(Values.empty()) {
-	Data_.ErrorMessage << "Invalid expression: " << FileNameStringToConsole(Data_.inputFile()) << 
+	Data_.ErrorMessage << "Invalid expression: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
 		':' << Data_.lineNo();
 	return false;
 	}
@@ -905,7 +896,7 @@ if(Values.empty()) {
 #endif
 
 if(!THelper::runVM(Values, Result_)) {
-	Data_.ErrorMessage << "Invalid expression: " << FileNameStringToConsole(Data_.inputFile()) << 
+	Data_.ErrorMessage << "Invalid expression: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
 		':' << Data_.lineNo();
 	return false;
 	}

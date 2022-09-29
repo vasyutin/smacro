@@ -18,22 +18,12 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this software. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "globals.h"
+#include <tpclbase.h>
 
 #include <vector>
 #include <cctype>
 #include <algorithm>
-
 #include <ctype.h>
-
-// -----------------------------------------------------------------------
-bool FolderExists(const TFileNameChar *Folder_);
-bool MakePath(const TFileNameChar *Path_);
-bool FolderEntries(const TFileNameChar *Folder_, std::vector<TFileNameString> &Folders_, 
-	std::vector<TFileNameString> &Files_);
-bool FileExists(const TFileNameChar *File_);
-bool RemoveFile(const TFileNameChar *File_);
-bool DuplicateFile(const TFileNameChar *Src_, const TFileNameChar *Dst_);
 
 // -----------------------------------------------------------------------
 template <typename _TString>
@@ -41,7 +31,7 @@ void TrimString(_TString &String_)
 {
 struct THelper {
 	static bool notASpace(typename _TString::value_type Char_) {
-		#if defined(SMACRO_WINDOWS)
+		#if defined(TPCL_OS_WINDOWS)
 			if(sizeof(Char_) == sizeof(wchar_t))
 				return !iswspace((wint_t)Char_);
 			else
@@ -55,20 +45,3 @@ String_.erase(String_.begin(), std::find_if(String_.begin(), String_.end(), THel
 String_.erase(std::find_if(String_.rbegin(), String_.rend(), THelper::notASpace).base(), 
 	String_.end());
 }
-
-// -----------------------------------------------------------------------
-#if defined(SMACRO_WINDOWS)
-	#if defined(__MINGW32__) || defined(__MINGW64__)
-		std::string WStringToWindowsLocal(const std::wstring &Unicode_);
-		void WindowsLocalToWString(const char *Local_, std::wstring &String_);
-	#endif
-
-	std::string FileNameStringToConsole(const TFileNameString &Unicode_);
-	TFileNameString AbsolutePath(const TFileNameString &Path_);
-	TFileNameString Utf8ToFileNameString(const std::string &Utf8_);
-	std::string FileNameStringToUtf8(const TFileNameString &Unicode_);
-#else
-	#define FileNameStringToConsole(Param_) (Param_)
-#endif // #if defined(SMACRO_WINDOWS)
-
-
