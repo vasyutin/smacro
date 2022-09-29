@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\processor.cpp" />
-    <ClCompile Include="..\..\src\utils.cpp" />
     <ClCompile Include="..\..\thirdparty\tpcl\src\tpcl.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

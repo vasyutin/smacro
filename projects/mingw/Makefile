@@ -44,8 +44,7 @@ all: app-binary
 # Sources
 #-----------------------------------------------------------------
 APP_SRCS=../../src/main.cpp \
-	../../src/processor.cpp \
-	../../src/utils.cpp
+	../../src/processor.cpp
 APP_OBJS=$(subst ../../src/,$(OBJ_DIR)/,$(subst .cpp,.o,$(APP_SRCS)))
 
 TPCL_SRCS=../../thirdparty/tpcl/src/tpcl.cpp

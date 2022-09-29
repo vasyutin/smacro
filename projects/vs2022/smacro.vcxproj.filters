@@ -15,9 +15,6 @@
     <ClCompile Include="..\..\src\processor.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\utils.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\thirdparty\tpcl\src\tpcl.cpp">
       <Filter>src\tpcl</Filter>
     </ClCompile>
