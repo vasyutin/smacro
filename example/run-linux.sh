@@ -1,2 +1,2 @@
 # !/bin/sh
-../build/smacro -isource -o../build/doc_res -vconfig -e*.txt,*.png
+../build/smacro -s source -d ../build/doc_res -v config -e *.txt,*.png

@@ -1,1 +1,1 @@
-..\build\release\smacro -isource -o..\build\doc_res -vconfig -e*.txt,*.png
+..\build\release\smacro -s source -d ..\build\doc_res -v config -e *.txt,*.png

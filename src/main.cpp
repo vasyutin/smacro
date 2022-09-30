@@ -212,8 +212,9 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 		true, std::string(), "variables file", CmdParser);
 	TCLAP::MultiArg<std::string> ExcludeMasks("e", "exclude",
 		"The mask of filename to exclude from processing. This files are only copied to the output folder.", false, "exclude masks", CmdParser);
-	TCLAP::MultiArg<std::string> IgnoreMasks("g", "ignore",
+	TCLAP::MultiArg<std::string> IgnoreMasks("i", "ignore",
 		"The mask of filename to ignore. This files are not copied to the output folder.", false, "ignore masks", CmdParser);
+	TCLAP::ValueArg<std::string> InputFolder("o", "order", "The file containing the list of the files to parse to look to the $number directive", true, std::string(), "order file", CmdParser);
 
 	try {
 		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
