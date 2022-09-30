@@ -74,14 +74,31 @@ assert(Folder_);
 }
 
 // -----------------------------------------------------------------------
+TFileNameString AbsolutePath(const TFileNameChar *Path_)
+{
+	const DWORD MAX_PATH_SIZE = 1024;
+
+	TFileNameChar APath[MAX_PATH_SIZE];
+	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+		DWORD RetValue = GetFullPathNameW(Path_, MAX_PATH_SIZE, APath, NULL);
+	#else
+		DWORD RetValue = GetFullPathNameA(Path_, MAX_PATH_SIZE, APath, NULL);
+	#endif
+	if(!RetValue) return TFileNameString();
+	//
+	return TFileNameString(APath, APath + RetValue);
+}
+
+// -----------------------------------------------------------------------
 bool CreatePath(const TFileNameChar *Path_)
 {
 assert(Path_);
 #if defined(TPCL_OS_WINDOWS)
+	TFileNameString APath = AbsolutePath(Path_);
 	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-		return SHCreateDirectoryExW(NULL, Path_, NULL) == ERROR_SUCCESS;
+		return SHCreateDirectoryExW(NULL, APath.c_str(), NULL) == ERROR_SUCCESS;
 	#else
-		return SHCreateDirectoryExA(NULL, Path_, NULL) == ERROR_SUCCESS;
+		return SHCreateDirectoryExA(NULL, APath.c_str(), NULL) == ERROR_SUCCESS;
 	#endif
 #else
 	const mode_t Mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;

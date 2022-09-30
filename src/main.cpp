@@ -214,7 +214,8 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 		"The mask of filename to exclude from processing. This files are only copied to the output folder.", false, "exclude masks", CmdParser);
 	TCLAP::MultiArg<std::string> IgnoreMasks("i", "ignore",
 		"The mask of filename to ignore. This files are not copied to the output folder.", false, "ignore masks", CmdParser);
-	TCLAP::ValueArg<std::string> InputFolder("o", "order", "The file containing the list of the files to parse to look to the $number directive", true, std::string(), "order file", CmdParser);
+	TCLAP::ValueArg<std::string> OrderFile("o", "order", "The file containing the list of the files to parse to look to the $number directive", false, std::string(), "order file", 
+		CmdParser);
 
 	try {
 		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
@@ -289,10 +290,16 @@ bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameStr
 			}
 		}
 		if(Processor_.isIgnored(*it)) continue;
-
-		bool Result = Processor_.isExcluded(*it)?
-			tpcl::DuplicateFile(InputFile.c_str(), OutputFile.c_str()):
-			Processor_.processFile(InputFile, OutputFile);
+		bool Result;
+		if(Processor_.isExcluded(*it)) {
+			if(Processor_.mode() == TProcessor::TMode::Processing)
+				Result = tpcl::DuplicateFile(InputFile.c_str(), OutputFile.c_str());
+			else
+				Result = true;
+		}
+		else {
+			Result = Processor_.processFile(InputFile, OutputFile);
+		}
 		//
 		if(!Result) return false;
 	}

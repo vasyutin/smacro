@@ -45,8 +45,8 @@ TProcessor::TProcessor(const TParameters &Parameters_, TMode Mode_):
 	m_CommentOperatorRegExp("#[/][/]"),
 	m_CommentRegExp("[/][/]"),
 	m_IncludeRegExp("#include\\s*[<]([^>]*)[>]"),
-	m_NumberRegExp("$number[{]\\s*([^}|\\s]+)\\s*[|]\\s*([^}|\\s]+)\\s*[}]"), 
-	m_ReferenceRegExp("$ref[{]\\s*([^}|\\s]+)\\s*[}]")
+	m_NumberRegExp("[$]number[{]\\s*([^{}|\\s]+)\\s*[|]\\s*([^{}|\\s]+)\\s*[}]"), 
+	m_ReferenceRegExp("[$]ref[{]\\s*([^{}|\\s]+)\\s*[}]")
 {
 	m_LexemeRegExps.push_back(TLexemeRegExp());
 	m_LexemeRegExps.back().Type = TLexemeType::String;
@@ -249,7 +249,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 			}
 			ClassIt->second++;
 			m_Number.emplace(Name, ClassIt->second);
-			StartPos += (Match[0].second - Match[0].first);
+			StartPos = Match[0].second - Line_.c_str();
 		}
 		else {
 			auto NumberIt = m_Number.find(Name);
@@ -266,7 +266,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 	}
 
 	// ---
-	if(mode() == TMode::Collecting) {
+	if(mode() == TMode::Processing) {
 		size_t StartPos = 0;
 		while(std::regex_search(Line_.c_str() + StartPos, Match, m_ReferenceRegExp)) {
 			std::string Name(Match[1].first, Match[1].second);
