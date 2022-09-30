@@ -201,7 +201,7 @@ bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TF
 }
 
 // -----------------------------------------------------------------------
-void TProcessor::valuesSubstitution(std::string &Line_)
+TProcessor::TResult TProcessor::valuesSubstitution(TProcessData& Data_, std::string &Line_)
 {
 	// Replacing variables
 	if(!Line_.empty()) {
@@ -211,19 +211,22 @@ void TProcessor::valuesSubstitution(std::string &Line_)
 			std::string Variable(Match[1].first, Match[1].second);
 			TVariables::const_iterator it = m_Variables.find(Variable);
 			if(it == m_Variables.end()) {
-				StartPos += Variable.size();
+				Data_.ErrorMessage << "Variable '" << tpcl::Utf8ToConsoleString(Variable) << "' is not defined (file " << 
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ')';
+				return TResult::SyntaxError;
 			}
 			else {
-				Line_.replace(Match[0].first - Line_.c_str(), Match[0].second - Match[0].first,
-					it->second);
-				StartPos += it->second.size();
+				size_t ReplaceStartPos = Match[0].first - Line_.c_str();
+				Line_.replace(ReplaceStartPos, Match[0].second - Match[0].first, it->second);
+				StartPos = ReplaceStartPos + it->second.size();
 			}
 		}
 	}
+	return TResult::OK;
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::autoNumbering(std::string& Line_) 
+TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& Line_) 
 {
 	if(Line_.empty()) return TResult::OK;
 
@@ -231,21 +234,55 @@ TProcessor::TResult TProcessor::autoNumbering(std::string& Line_)
 	std::cmatch Match;
 	while(std::regex_search(Line_.c_str() + StartPos, Match, m_NumberRegExp)) {
 		std::string Name(Match[1].first, Match[1].second);
-		std::string Class(Match[2].first, Match[2].second);
-
-			TVariables::const_iterator it = m_Variables.find(Variable);
-			if(it == m_Variables.end()) {
-				StartPos += Variable.size();
+		//
+		if(mode() == TMode::Collecting) {
+			std::string Class(Match[2].first, Match[2].second);
+			auto NumberIt = m_Number.find(Name);
+			if(NumberIt != m_Number.end()) {
+				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' is defined for the second time (file " << 
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ')';
+				return TResult::SyntaxError;
 			}
-			else {
-				Line_.replace(Match[0].first - Line_.c_str(), Match[0].second - Match[0].first,
-					it->second);
-				StartPos += it->second.size();
+			auto ClassIt = m_NumbersGenerator.find(Class);
+			if(ClassIt == m_NumbersGenerator.end()) {
+				ClassIt = m_NumbersGenerator.emplace(Class, 0).first;
 			}
+			ClassIt->second++;
+			m_Number.emplace(Name, ClassIt->second);
+			StartPos += (Match[0].second - Match[0].first);
+		}
+		else {
+			auto NumberIt = m_Number.find(Name);
+			if(NumberIt == m_Number.end()) {
+				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run (file " << 
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ')';
+				return TResult::SyntaxError;
+			}
+			std::string NumberString(std::to_string(NumberIt->second));
+			size_t ReplaceStartPos = Match[0].first - Line_.c_str();
+			Line_.replace(ReplaceStartPos, Match[0].second - Match[0].first, NumberString);
+			StartPos = ReplaceStartPos + NumberString.size();
 		}
 	}
 
-
+	// ---
+	if(mode() == TMode::Collecting) {
+		size_t StartPos = 0;
+		while(std::regex_search(Line_.c_str() + StartPos, Match, m_ReferenceRegExp)) {
+			std::string Name(Match[1].first, Match[1].second);
+			//
+			auto NumberIt = m_Number.find(Name);
+			if(NumberIt == m_Number.end()) {
+				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run (file " << 
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ')';
+				return TResult::SyntaxError;
+			}
+			std::string NumberString(std::to_string(NumberIt->second));
+			size_t ReplaceStartPos = Match[0].first - Line_.c_str();
+			Line_.replace(ReplaceStartPos, Match[0].second - Match[0].first, NumberString);
+			StartPos = ReplaceStartPos + NumberString.size();
+		}
+	}
 
 	return TResult::OK;
 }
@@ -253,7 +290,7 @@ TProcessor::TResult TProcessor::autoNumbering(std::string& Line_)
 // -----------------------------------------------------------------------
 std::string::const_iterator TProcessor::firstNonSpace(std::string::const_iterator Begin_, std::string::const_iterator End_)
 {
-return std::find_if_not(Begin_, End_, [](std::string::value_type Ch_) {return std::isspace((int)Ch_);});
+return std::find_if_not(Begin_, End_, [](std::string::value_type Ch_) {return Ch_ < 0? false: std::isspace(Ch_);});
 }
 
 // -----------------------------------------------------------------------
@@ -274,8 +311,9 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 		// Check if line starts with #
 		Index = firstNonSpace(Line_.cbegin(), Line_.cend());
 		if(Index == Line_.cend() || *Index != '#') {
-			valuesSubstitution(Line_);
-			return autoNumbering(Line_);
+			TResult Res = valuesSubstitution(Data_, Line_);
+			if(TResult::OK != Res) return Res;
+			return autoNumbering(Data_, Line_);
 		}
 		std::smatch Match;
 		if(std::regex_search(Index, Line_.cend(), Match, m_CommentOperatorRegExp) && !Match.position()) {
@@ -283,9 +321,9 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 		}
 		// Substitute values
 		if(DoProcessing_) {
-			valuesSubstitution(Line_);
-			TResult Res = autoNumbering(Line_);
-			if(TResult::OK != Res) return Res;
+			TResult Res = valuesSubstitution(Data_, Line_);
+			if(TResult::OK != Res || TResult::OK != (Res = autoNumbering(Data_, Line_))) 
+				return Res;
 
 			// Include directive
 			if(std::regex_search(Index, Line_.cend(), Match, m_IncludeRegExp) && !Match.position()) {

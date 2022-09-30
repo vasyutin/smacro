@@ -31,12 +31,12 @@ void TrimString(_TString &String_)
 {
 struct THelper {
 	static bool notASpace(typename _TString::value_type Char_) {
-		#if defined(TPCL_OS_WINDOWS)
-			if(sizeof(Char_) == sizeof(wchar_t))
-				return !iswspace((wint_t)Char_);
-			else
+		#if defined(TPCL_OS_WINDOWS) && defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+			return !iswspace(Char_);
+		#else
+			return Char_ < 0? true: !std::isspace(Char_);
 		#endif				
-		return !std::isspace((int)Char_);
+		
 		}
 	};
 

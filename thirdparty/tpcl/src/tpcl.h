@@ -146,9 +146,16 @@ namespace tpcl {
 		return FileNameToConsoleString(Message_.c_str());
 	}
 
+	std::string Utf8ToConsoleString(const char* Message_);
+	inline std::string Utf8ToConsoleString(const std::string Message_) {
+		return Utf8ToConsoleString(Message_.c_str());
+	}
+
 #else
 	inline const char* FileNameToConsoleString(const char *Message_) {return Message_;}
 	inline const std::string& FileNameToConsoleString(const std::string& Message_) {return Message_;}
+	inline const char* Utf8ToConsoleString(const char* Message_) {return Message_;}
+	inline const std::string& Utf8ToConsoleString(const std::string& Message_) {return Message_;}
 #endif
 
 // ----------------------------------------------------------------------------

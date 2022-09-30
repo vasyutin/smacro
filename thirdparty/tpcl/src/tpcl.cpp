@@ -372,4 +372,28 @@ std::string FileNameToConsoleString(const TFileNameChar* Message_)
 	return RetValue;
 }
 
+// -----------------------------------------------------------------------
+std::string Utf8ToConsoleString(const char* UTF8_)
+{
+	std::string RetValue;
+	//
+	int UTF8Size = (int)strlen(UTF8_);
+	if(!UTF8Size) return RetValue;
+	//
+	int CharsCount = MultiByteToWideChar(CP_UTF8, 0, UTF8_, UTF8Size, NULL, 0);
+	if(CharsCount <= 0) return RetValue;
+	//
+	std::wstring Temp;
+	Temp.resize(CharsCount);
+	if(MultiByteToWideChar(CP_UTF8, 0, UTF8_, UTF8Size, (wchar_t*)(Temp.c_str()), CharsCount) <= 0)
+		return RetValue;
+	//
+	int LocalCharsCount = WideCharToMultiByte(CP_ACP, 0, Temp.c_str(), CharsCount, NULL, 0, NULL, NULL);
+	if(LocalCharsCount <= 0) return RetValue;
+	//
+	RetValue.resize(LocalCharsCount);
+	WideCharToMultiByte(CP_ACP, 0, Temp.c_str(), CharsCount, (char*)(RetValue.c_str()), LocalCharsCount, NULL, NULL);
+	return RetValue;
+}
+
 } // namespace tcpl

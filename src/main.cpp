@@ -30,7 +30,7 @@
 
 const int RETCODE_OK = 0;
 const int RETCODE_INVALID_PARAMETERS = 1;
-const int RETCODE_PROCESS_ERROR = 1;
+const int RETCODE_PROCESS_ERROR = 2;
 
 // -----------------------------------------------------------------------
 bool ParseVariables(const tpcl::TFileNameChar *FileName_, TParameters &Parameters_)
@@ -186,9 +186,9 @@ const char *g_UsageMessage =
 	"All the files being processed (except the files excluded from the processing with the -e switch) are assumed to be in UTF-8 encoding.\n"
 	"Example:\n"
 	#if defined(TPCL_OS_WINDOWS)
-		"\tsmacro -i ..\\..\\example\\source -o ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png -e *.jpg\n\n"
+		"\tsmacro -s ..\\..\\example\\source -d ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png -e *.jpg\n\n"
 	#else
-		"\tsmacro -i ../../example/source -o ../../build/doc_res -v ../../example/config -e *.txt,*.png -e *.jpg\n\n"
+		"\tsmacro -s ../../example/source -d ../../build/doc_res -v ../../example/config -e *.txt,*.png -e *.jpg\n\n"
 	#endif
 	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).";
 
@@ -206,8 +206,8 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 	#endif
 
 	TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "2.0");
-	TCLAP::ValueArg<std::string> InputFolder("s", "src", "The folder, containing documentation files to process", true, std::string(), "input folder", CmdParser);
-	TCLAP::ValueArg<std::string> OutputFolder("d", "dest", "The destination folder for the processed files", true, std::string(), "output folder", CmdParser);
+	TCLAP::ValueArg<std::string> InputFolder("s", "src", "The folder, containing documentation files to process", true, std::string(), "source folder", CmdParser);
+	TCLAP::ValueArg<std::string> OutputFolder("d", "dest", "The destination folder for the processed files", true, std::string(), "destination folder", CmdParser);
 	TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
 		true, std::string(), "variables file", CmdParser);
 	TCLAP::MultiArg<std::string> ExcludeMasks("e", "exclude",
@@ -336,7 +336,7 @@ bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameStr
 		#endif
 	}
 
-	TProcessor Processor(Parameters, TProcessor::TMode::Collection);
+	TProcessor Processor(Parameters, TProcessor::TMode::Collecting);
 	if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor) ||
 		(Processor.setMode(TProcessor::TMode::Processing), !ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor)))
 		return RETCODE_PROCESS_ERROR;

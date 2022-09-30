@@ -28,7 +28,7 @@
 class TProcessor {
 public:
 	// —бор данных дл€ автонумератора, обработка
-	enum class TMode {Collection, Processing};
+	enum class TMode {Collecting, Processing};
 
 	// ---
 	TProcessor(const TParameters& Parameters_, TMode Mode_);
@@ -80,8 +80,8 @@ private:
 		OperatorEndif
 	};
 
-	const TVariables& m_Variables;
-	const TExcludePatterns& m_ExcludePatterns, & m_IgnorePatterns;
+	const TVariables &m_Variables;
+	const TExcludePatterns &m_ExcludePatterns, &m_IgnorePatterns;
 	
 	// Autonumerator
 	std::unordered_map<std::string, unsigned> m_NumbersGenerator;
@@ -91,8 +91,8 @@ private:
 	TResult readNextLine(TProcessData& Data_, std::string& Line_, bool DoProcessing_);
 	TResult processOperator(TProcessData& Data_, std::string& Line_, bool Skip_);
 	static bool isOperator(TResult Result_);
-	void valuesSubstitution(std::string& Line_);
-	TResult autoNumbering(std::string& Line_);
+	TResult valuesSubstitution(TProcessData& Data_, std::string& Line_);
+	TResult autoNumbering(TProcessData& Data_, std::string& Line_);
 	TResult processLinesTillNextKeyword(TProcessData& Data_, std::string& Line_, bool Skip_);
 
 	std::regex m_VariableRegExp, m_IfRegExp, m_ElifRegExp, m_ElseRegExp, m_EndifRegExp,
