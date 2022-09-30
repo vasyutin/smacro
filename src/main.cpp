@@ -206,8 +206,8 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 	#endif
 
 	TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "2.0");
-	TCLAP::ValueArg<std::string> InputFolder("i", "input", "The folder, containing documentation files to process", true, std::string(), "input folder", CmdParser);
-	TCLAP::ValueArg<std::string> OutputFolder("o", "output", "The destination folder for the processed files", true, std::string(), "output folder", CmdParser);
+	TCLAP::ValueArg<std::string> InputFolder("s", "src", "The folder, containing documentation files to process", true, std::string(), "input folder", CmdParser);
+	TCLAP::ValueArg<std::string> OutputFolder("d", "dest", "The destination folder for the processed files", true, std::string(), "output folder", CmdParser);
 	TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
 		true, std::string(), "variables file", CmdParser);
 	TCLAP::MultiArg<std::string> ExcludeMasks("e", "exclude",
@@ -258,10 +258,13 @@ bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameStr
 		std::cerr << "Error accessing folder '" << tpcl::FileNameToConsoleString(Input_) << "'.";
 		return false;
 	}
-	if(!tpcl::FolderExists(Output_.c_str())) {
-		if(!tpcl::CreatePath(Output_.c_str())) {
-			std::cerr << "Can't create folder '" << tpcl::FileNameToConsoleString(Output_) << "'.";
-			return false;
+
+	if(Processor_.mode() == TProcessor::TMode::Processing) {
+		if(!tpcl::FolderExists(Output_.c_str())) {
+			if(!tpcl::CreatePath(Output_.c_str())) {
+				std::cerr << "Can't create folder '" << tpcl::FileNameToConsoleString(Output_) << "'.";
+				return false;
+			}
 		}
 	}
 
@@ -276,22 +279,21 @@ bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameStr
 
 	for(auto it = Files.begin(); it != Files.end(); ++it) {
 		tpcl::TFileNameString InputFile(Input_ + *it), OutputFile(Output_ + *it);
-		if(tpcl::FileExists(OutputFile.c_str())) {
-			if(!tpcl::RemoveFile(OutputFile.c_str())) {
-				std::cerr << "Can't delete file '" << tpcl::FileNameToConsoleString(OutputFile) << "'.";
-				return false;
+		if(Processor_.mode() == TProcessor::TMode::Processing) {
+			if(tpcl::FileExists(OutputFile.c_str())) {
+				if(!tpcl::RemoveFile(OutputFile.c_str())) {
+					std::cerr << "Can't delete file '" << tpcl::FileNameToConsoleString(OutputFile) << "'.";
+					return false;
+				}
 			}
 		}
 		if(Processor_.isIgnored(*it)) continue;
 
-		bool Result = Processor_.isExcluded(*it) ?
-			tpcl::DuplicateFile(InputFile.c_str(), OutputFile.c_str()) :
+		bool Result = Processor_.isExcluded(*it)?
+			tpcl::DuplicateFile(InputFile.c_str(), OutputFile.c_str()):
 			Processor_.processFile(InputFile, OutputFile);
 		//
-		if(!Result) return false; /*{
-			std::cerr << "Can't write file '" << FileNameStringToConsole(OutputFile) << "'.";
-			return false;
-			}*/
+		if(!Result) return false;
 	}
 
 	for(auto it = Folders.begin(); it != Folders.end(); ++it) {
@@ -334,8 +336,9 @@ bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameStr
 		#endif
 	}
 
-	TProcessor Processor(Parameters);
-	if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor))
+	TProcessor Processor(Parameters, TProcessor::TMode::Collection);
+	if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor) ||
+		(Processor.setMode(TProcessor::TMode::Processing), !ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor)))
 		return RETCODE_PROCESS_ERROR;
 
 	return RETCODE_OK;

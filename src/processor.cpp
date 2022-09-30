@@ -32,7 +32,8 @@
 //#define DEBUG_OUTPUT
 
 // -----------------------------------------------------------------------
-TProcessor::TProcessor(const TParameters &Parameters_): 
+TProcessor::TProcessor(const TParameters &Parameters_, TMode Mode_): 
+	m_Mode(Mode_),
 	m_Variables(Parameters_.Variables),
 	m_ExcludePatterns(Parameters_.ExcludePatterns),
 	m_IgnorePatterns(Parameters_.IgnorePatterns),
@@ -43,7 +44,9 @@ TProcessor::TProcessor(const TParameters &Parameters_):
 	m_EndifRegExp("#endif"), 
 	m_CommentOperatorRegExp("#[/][/]"),
 	m_CommentRegExp("[/][/]"),
-	m_IncludeRegExp("#include\\s*[<]([^>]*)[>]")
+	m_IncludeRegExp("#include\\s*[<]([^>]*)[>]"),
+	m_NumberRegExp("$number[{]\\s*([^}|\\s]+)\\s*[|]\\s*([^}|\\s]+)\\s*[}]"), 
+	m_ReferenceRegExp("$ref[{]\\s*([^}|\\s]+)\\s*[}]")
 {
 	m_LexemeRegExps.push_back(TLexemeRegExp());
 	m_LexemeRegExps.back().Type = TLexemeType::String;
@@ -119,8 +122,9 @@ bool TProcessor::isOperator(TResult Result_)
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TProcessData::TProcessData(const tpcl::TFileNameString &InputFile_, const tpcl::TFileNameString &OutputFile_):
-	OutputFile(OutputFile_)
+TProcessor::TProcessData::TProcessData(const tpcl::TFileNameString &InputFile_, const tpcl::TFileNameString &OutputFile_, TMode Mode_):
+	OutputFile(OutputFile_),
+	Mode(Mode_)
 {
 	assert(Input.empty());
 	std::unique_ptr<std::ifstream> Stream(new std::ifstream);
@@ -135,61 +139,63 @@ TProcessor::TProcessData::TProcessData(const tpcl::TFileNameString &InputFile_, 
 	InputFiles.push_back(InputFile_);
 	CurrentLines.push_back(0);
 
-	Output.open(OutputFile_, std::ios::binary);
-	if(!Output) {
-		ErrorMessage = "Can't open output file: '";
-		ErrorMessage += tpcl::FileNameToConsoleString(OutputFile_);
-		ErrorMessage += "'.";
-		return;
+	if(Mode_ == TMode::Processing) {
+		Output.open(OutputFile_, std::ios::binary);
+		if(!Output) {
+			ErrorMessage = "Can't open output file: '";
+			ErrorMessage += tpcl::FileNameToConsoleString(OutputFile_);
+			ErrorMessage += "'.";
+			return;
+		}
 	}
 }
 
 // -----------------------------------------------------------------------
 bool TProcessor::TProcessData::initialized() const
 {
-return !Input.empty() && Input.back()->is_open() && Output.is_open();
+	return !Input.empty() && Input.back()->is_open() && (Mode == TMode::Processing? Output.is_open(): true);
 }
 
 // -----------------------------------------------------------------------
 bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TFileNameString &Output_)
 {
-TProcessData Data(Input_, Output_);
-if(!Data.initialized()) {
-	std::cerr << Data.errorMessage();
-	return false;
-	}
-//
-std::string Line;
-while(true) {
-	TResult Result = readNextLine(Data, Line, true);
-	if(Result == TResult::OK) {
-		if(!Data.Output.write(Line.c_str(), Line.size())) {
-			std::cerr << "Error writing file '" << tpcl::FileNameToConsoleString(Output_) << "'.";
-			return false;
-			}
-		continue;
-		}
-	else if(Result == TResult::EndOfFile)
-		return true;
-	else if(Result == TResult::SyntaxError)
-		return false;
-	//
-	assert(isOperator(Result));
-	// There can be only #if
-	if(Result != TResult::OperatorIf) {
-		std::cerr << "Expected #if: " << tpcl::FileNameToConsoleString(Input_) << ':' << Data.lineNo() <<
-			".";
-		return false;
-		}
-	//
-	Result = processOperator(Data, Line, false);
-	if(Result == TResult::WriteError) {
-		std::cerr << "Can't write file: '" << tpcl::FileNameToConsoleString(Output_) << "'.";
-		return false;
-		}
-	else if(Result != TResult::OK) {
+	TProcessData Data(Input_, Output_, mode());
+	if(!Data.initialized()) {
 		std::cerr << Data.errorMessage();
 		return false;
+	}
+	//
+	std::string Line;
+	while(true) {
+		TResult Result = readNextLine(Data, Line, true);
+		if(Result == TResult::OK) {
+			if(mode() == TMode::Processing && !Data.Output.write(Line.c_str(), Line.size())) {
+				std::cerr << "Error writing file '" << tpcl::FileNameToConsoleString(Output_) << "'.";
+				return false;
+			}
+			continue;
+		}
+		else if(Result == TResult::EndOfFile)
+			return true;
+		else if(Result == TResult::SyntaxError)
+			return false;
+		//
+		assert(isOperator(Result));
+		// There can be only #if
+		if(Result != TResult::OperatorIf) {
+			std::cerr << "Expected #if: " << tpcl::FileNameToConsoleString(Input_) << ':' << Data.lineNo() <<
+				".";
+			return false;
+		}
+		//
+		Result = processOperator(Data, Line, false);
+		if(Result == TResult::WriteError) {
+			std::cerr << "Can't write file: '" << tpcl::FileNameToConsoleString(Output_) << "'.";
+			return false;
+		}
+		else if(Result != TResult::OK) {
+			std::cerr << Data.errorMessage();
+			return false;
 		}
 	}
 }
@@ -197,28 +203,55 @@ while(true) {
 // -----------------------------------------------------------------------
 void TProcessor::valuesSubstitution(std::string &Line_)
 {
-// Replacing variables
-if(!Line_.empty()) {
-	size_t StartPos = 0;
-	std::cmatch Match;
-	while(std::regex_search(Line_.c_str() + StartPos, Match, m_VariableRegExp)) {
-		std::string Variable(Match[1].first, Match[1].second);
-		TVariables::const_iterator it = m_Variables.find(Variable);
-		if(it == m_Variables.end()) {
-			StartPos += Variable.size();
+	// Replacing variables
+	if(!Line_.empty()) {
+		size_t StartPos = 0;
+		std::cmatch Match;
+		while(std::regex_search(Line_.c_str() + StartPos, Match, m_VariableRegExp)) {
+			std::string Variable(Match[1].first, Match[1].second);
+			TVariables::const_iterator it = m_Variables.find(Variable);
+			if(it == m_Variables.end()) {
+				StartPos += Variable.size();
 			}
-		else {
-			Line_.replace(Match[0].first - Line_.c_str(), Match[0].second - Match[0].first, 
-				it->second);
-			StartPos += it->second.size();
+			else {
+				Line_.replace(Match[0].first - Line_.c_str(), Match[0].second - Match[0].first,
+					it->second);
+				StartPos += it->second.size();
 			}
 		}
 	}
 }
 
 // -----------------------------------------------------------------------
-std::string::const_iterator TProcessor::firstNonSpace(std::string::const_iterator Begin_, 
-		std::string::const_iterator End_)
+TProcessor::TResult TProcessor::autoNumbering(std::string& Line_) 
+{
+	if(Line_.empty()) return TResult::OK;
+
+	size_t StartPos = 0;
+	std::cmatch Match;
+	while(std::regex_search(Line_.c_str() + StartPos, Match, m_NumberRegExp)) {
+		std::string Name(Match[1].first, Match[1].second);
+		std::string Class(Match[2].first, Match[2].second);
+
+			TVariables::const_iterator it = m_Variables.find(Variable);
+			if(it == m_Variables.end()) {
+				StartPos += Variable.size();
+			}
+			else {
+				Line_.replace(Match[0].first - Line_.c_str(), Match[0].second - Match[0].first,
+					it->second);
+				StartPos += it->second.size();
+			}
+		}
+	}
+
+
+
+	return TResult::OK;
+}
+
+// -----------------------------------------------------------------------
+std::string::const_iterator TProcessor::firstNonSpace(std::string::const_iterator Begin_, std::string::const_iterator End_)
 {
 return std::find_if_not(Begin_, End_, [](std::string::value_type Ch_) {return std::isspace((int)Ch_);});
 }
@@ -226,196 +259,197 @@ return std::find_if_not(Begin_, End_, [](std::string::value_type Ch_) {return st
 // -----------------------------------------------------------------------
 TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &Line_, bool DoProcessing_)
 {
-assert(!Data_.Input.empty());
-std::string::const_iterator Index;
-while(true) {
-	if(!std::getline(*Data_.Input.back(), Line_)) {
-		// Don close the main file
-		if(Data_.Input.size() <= 1) return TResult::EndOfFile;
-		//
-		Data_.Input.pop_back();
-		Data_.InputFiles.pop_back();
-		Data_.CurrentLines.pop_back();
-		continue;
-		}
-	// Check if line starts with #
-	Index = firstNonSpace(Line_.cbegin(), Line_.cend());
-	if(Index == Line_.cend() || *Index != '#') {
-		valuesSubstitution(Line_);
-		return TResult::OK;
-		}
-	std::smatch Match;
-	if(std::regex_search(Index, Line_.cend(), Match, m_CommentOperatorRegExp) &&
-		!Match.position()) {
-		continue;
-		}
-	// Substitute values
-	if(DoProcessing_) {
-		valuesSubstitution(Line_);
-
-		// Include directive
-		if(std::regex_search(Index, Line_.cend(), Match, m_IncludeRegExp) && !Match.position()) {
-			if(!Match[1].length()) return TResult::SyntaxError;
-
-			std::unique_ptr<std::ifstream> Stream(new std::ifstream);
-			#if defined(TPCL_OS_WINDOWS)
-				#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-					tpcl::TFileNameString FileName(tpcl::Utf8ToWideString(std::string(Match[1].first, Match[1].second)));
-				#else
-					tpcl::TFileNameString FileName(tpcl::Utf8ToLocalString(std::string(Match[1].first, Match[1].second)));
-				#endif
-			#else
-				std::string FileName(Match[1].first, Match[1].second);
-			#endif
-			Stream->open(FileName, std::ios::binary);
-			if(!(*Stream)) {
-				Data_.ErrorMessage  << "Can't include file '" << tpcl::FileNameToConsoleString(FileName) << "': " <<
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
-				return TResult::SyntaxError;
-				}
-			Data_.Input.push_back(std::move(Stream));
-			Data_.InputFiles.push_back(FileName);
-			Data_.CurrentLines.push_back(0);
+	assert(!Data_.Input.empty());
+	std::string::const_iterator Index;
+	while(true) {
+		if(!std::getline(*Data_.Input.back(), Line_)) {
+			// Don close the main file
+			if(Data_.Input.size() <= 1) return TResult::EndOfFile;
+			//
+			Data_.Input.pop_back();
+			Data_.InputFiles.pop_back();
+			Data_.CurrentLines.pop_back();
 			continue;
+		}
+		// Check if line starts with #
+		Index = firstNonSpace(Line_.cbegin(), Line_.cend());
+		if(Index == Line_.cend() || *Index != '#') {
+			valuesSubstitution(Line_);
+			return autoNumbering(Line_);
+		}
+		std::smatch Match;
+		if(std::regex_search(Index, Line_.cend(), Match, m_CommentOperatorRegExp) && !Match.position()) {
+			continue;
+		}
+		// Substitute values
+		if(DoProcessing_) {
+			valuesSubstitution(Line_);
+			TResult Res = autoNumbering(Line_);
+			if(TResult::OK != Res) return Res;
+
+			// Include directive
+			if(std::regex_search(Index, Line_.cend(), Match, m_IncludeRegExp) && !Match.position()) {
+				if(!Match[1].length()) return TResult::SyntaxError;
+
+				std::unique_ptr<std::ifstream> Stream(new std::ifstream);
+				#if defined(TPCL_OS_WINDOWS)
+					#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+						tpcl::TFileNameString FileName(tpcl::Utf8ToWideString(std::string(Match[1].first, Match[1].second)));
+					#else
+						tpcl::TFileNameString FileName(tpcl::Utf8ToLocalString(std::string(Match[1].first, Match[1].second)));
+					#endif
+				#else
+					std::string FileName(Match[1].first, Match[1].second);
+				#endif
+				Stream->open(FileName, std::ios::binary);
+				if(!(*Stream)) {
+					Data_.ErrorMessage << "Can't include file '" << tpcl::FileNameToConsoleString(FileName) << "': " <<
+						tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
+					return TResult::SyntaxError;
+				}
+				Data_.Input.push_back(std::move(Stream));
+				Data_.InputFiles.push_back(FileName);
+				Data_.CurrentLines.push_back(0);
+				continue;
 			}
 		}
-	break;
+		break;
 	}
-//
-TResult Result;
-std::smatch Match;
-if(std::regex_search(Index, Line_.cend(), Match, m_IfRegExp) && !Match.position()) {
-	Result = TResult::OperatorIf;
+	//
+	TResult Result;
+	std::smatch Match;
+	if(std::regex_search(Index, Line_.cend(), Match, m_IfRegExp) && !Match.position()) {
+		Result = TResult::OperatorIf;
 	}
-else if(std::regex_search(Index, Line_.cend(), Match, m_ElifRegExp) && !Match.position()) {
-	Result = TResult::OperatorElif;
+	else if(std::regex_search(Index, Line_.cend(), Match, m_ElifRegExp) && !Match.position()) {
+		Result = TResult::OperatorElif;
 	}
-else if(std::regex_search(Index, Line_.cend(), Match, m_ElseRegExp) && !Match.position()) {
-	Result = TResult::OperatorElse;
+	else if(std::regex_search(Index, Line_.cend(), Match, m_ElseRegExp) && !Match.position()) {
+		Result = TResult::OperatorElse;
 	}
-else if(std::regex_search(Index, Line_.cend(), Match, m_EndifRegExp) && !Match.position()) {
-	Result = TResult::OperatorEndif;
+	else if(std::regex_search(Index, Line_.cend(), Match, m_EndifRegExp) && !Match.position()) {
+		Result = TResult::OperatorEndif;
 	}
-else {
-	return TResult::OK;
+	else {
+		return TResult::OK;
 	}
-ptrdiff_t MatchedLen = Match.length();
-Line_.erase(Line_.begin(), Index + MatchedLen);
-TrimString(Line_);
-
-while(!Line_.empty() && *(Line_.end() - 1) == '\\') {
-	std::string NewLine;
-	if(!std::getline(*Data_.Input.back(), NewLine)) {
-		Data_.ErrorMessage  << "Line ends with '\\' but next string is not present: " << 
-			tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
-		return TResult::SyntaxError;
-		}
-	(Data_.CurrentLines.back())++;
-	TrimString(NewLine);
-	// Removing '\\'
-	*(Line_.end() - 1) = ' ';
-	Line_ += NewLine;
-	}
-// Removing comments from operator's string
-if(std::regex_search(Line_.cbegin(), Line_.cend(), Match, m_CommentRegExp)) {
-	Line_.erase(Line_.begin() + Match.position(), Line_.end());
+	ptrdiff_t MatchedLen = Match.length();
+	Line_.erase(Line_.begin(), Index + MatchedLen);
 	TrimString(Line_);
+
+	while(!Line_.empty() && *(Line_.end() - 1) == '\\') {
+		std::string NewLine;
+		if(!std::getline(*Data_.Input.back(), NewLine)) {
+			Data_.ErrorMessage << "Line ends with '\\' but next string is not present: " <<
+				tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
+			return TResult::SyntaxError;
+		}
+		(Data_.CurrentLines.back())++;
+		TrimString(NewLine);
+		// Removing '\\'
+		*(Line_.end() - 1) = ' ';
+		Line_ += NewLine;
 	}
-if(Result == TResult::OperatorEndif || Result == TResult::OperatorElse) {
-	if(!Line_.empty()) {
-		Data_.ErrorMessage << "Unexpected symbols after keyword: " <<
-			tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
-		return TResult::SyntaxError;
+	// Removing comments from operator's string
+	if(std::regex_search(Line_.cbegin(), Line_.cend(), Match, m_CommentRegExp)) {
+		Line_.erase(Line_.begin() + Match.position(), Line_.end());
+		TrimString(Line_);
+	}
+	if(Result == TResult::OperatorEndif || Result == TResult::OperatorElse) {
+		if(!Line_.empty()) {
+			Data_.ErrorMessage << "Unexpected symbols after keyword: " <<
+				tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+			return TResult::SyntaxError;
 		}
 	}
-else if(Result == TResult::OperatorIf || Result == TResult::OperatorElif) {
-	if(Line_.empty()) {
-		Data_.ErrorMessage << "Expression expected after keyword: " << 
-			tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
-		return TResult::SyntaxError;
+	else if(Result == TResult::OperatorIf || Result == TResult::OperatorElif) {
+		if(Line_.empty()) {
+			Data_.ErrorMessage << "Expression expected after keyword: " <<
+				tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+			return TResult::SyntaxError;
 		}
 	}
-return Result;
+	return Result;
 }
 
 // -----------------------------------------------------------------------
 TProcessor::TResult TProcessor::processLinesTillNextKeyword(TProcessData &Data_, 
 	std::string &Line_, bool Skip_) 
 {
-while(true) {
-	TResult Result = readNextLine(Data_, Line_, !Skip_);
-	if(Result == TResult::OK) {
-		if(!Skip_) {
-			if(!Data_.Output.write(Line_.c_str(), Line_.size())) {
-				return TResult::WriteError;
+	while(true) {
+		TResult Result = readNextLine(Data_, Line_, !Skip_);
+		if(Result == TResult::OK) {
+			if(mode() == TMode::Processing && !Skip_) {
+				if(!Data_.Output.write(Line_.c_str(), Line_.size())) {
+					return TResult::WriteError;
 				}
 			}
-		continue;
+			continue;
 		}
-	else if(Result == TResult::EndOfFile) return TResult::EndOfFile;
-	else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
-	//
-	assert(isOperator(Result));
-	return Result;
+		else if(Result == TResult::EndOfFile) return TResult::EndOfFile;
+		else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
+		//
+		assert(isOperator(Result));
+		return Result;
 	}
-return TResult::OK;
+	return TResult::OK;
 }
 
 // -----------------------------------------------------------------------
 TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string &Line_, 
 	bool Skip_)
 {
-bool ValidExpressionFound;
-if(!calculateExp(Line_, ValidExpressionFound, Data_)) return TResult::SyntaxError;
-//
-bool ExpectingEndifOnly = false;
-TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: (!ValidExpressionFound));
-while(true) {
-	if(Result == TResult::EndOfFile) {
-		Data_.ErrorMessage << "Expected #endif: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
-			':' << Data_.lineNo();
-		return TResult::SyntaxError;
-		}
-	else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
-	else if(Result == TResult::WriteError) return TResult::WriteError;
-		
-	// Normal results
-	else if(Result == TResult::OperatorIf) {
-		Result = processOperator(Data_, Line_, Skip_? true: (!ValidExpressionFound));
-		if(Result != TResult::OK) return Result;
-		Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: (!ValidExpressionFound));
-		}
-	else if(Result == TResult::OperatorElif) {
-		if(ExpectingEndifOnly) {
-			Data_.ErrorMessage << "Unexpected #elif: " << tpcl::FileNameToConsoleString(Data_.inputFile()) 
-				<< ':' << Data_.lineNo();
+	bool ValidExpressionFound;
+	if(!calculateExp(Line_, ValidExpressionFound, Data_)) return TResult::SyntaxError;
+	//
+	bool ExpectingEndifOnly = false;
+	TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ValidExpressionFound));
+	while(true) {
+		if(Result == TResult::EndOfFile) {
+			Data_.ErrorMessage << "Expected #endif: " << tpcl::FileNameToConsoleString(Data_.inputFile()) <<
+				':' << Data_.lineNo();
 			return TResult::SyntaxError;
+		}
+		else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
+		else if(Result == TResult::WriteError) return TResult::WriteError;
+
+		// Normal results
+		else if(Result == TResult::OperatorIf) {
+			Result = processOperator(Data_, Line_, Skip_ ? true : (!ValidExpressionFound));
+			if(Result != TResult::OK) return Result;
+			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ValidExpressionFound));
+		}
+		else if(Result == TResult::OperatorElif) {
+			if(ExpectingEndifOnly) {
+				Data_.ErrorMessage << "Unexpected #elif: " << tpcl::FileNameToConsoleString(Data_.inputFile())
+					<< ':' << Data_.lineNo();
+				return TResult::SyntaxError;
 			}
-		// Always check the expression to find errors
-		bool ElifExpressionResult;
-		if(!calculateExp(Line_, ElifExpressionResult, Data_)) return TResult::SyntaxError;
-		//
-		bool SkipThis = Skip_ || ValidExpressionFound;
-		Result = processLinesTillNextKeyword(Data_, Line_, SkipThis? true: (!ElifExpressionResult));
-		//
-		if(!ValidExpressionFound && ElifExpressionResult) ValidExpressionFound = true;
-		assert(!ExpectingEndifOnly);
+			// Always check the expression to find errors
+			bool ElifExpressionResult;
+			if(!calculateExp(Line_, ElifExpressionResult, Data_)) return TResult::SyntaxError;
+			//
+			bool SkipThis = Skip_ || ValidExpressionFound;
+			Result = processLinesTillNextKeyword(Data_, Line_, SkipThis ? true : (!ElifExpressionResult));
+			//
+			if(!ValidExpressionFound && ElifExpressionResult) ValidExpressionFound = true;
+			assert(!ExpectingEndifOnly);
 		}
-	else if(Result == TResult::OperatorElse) {
-		if(ExpectingEndifOnly) {
-			Data_.ErrorMessage << "Unexpected #else: " << tpcl::FileNameToConsoleString(Data_.inputFile()) 
-				<< ':' << Data_.lineNo();
-			return TResult::SyntaxError;
+		else if(Result == TResult::OperatorElse) {
+			if(ExpectingEndifOnly) {
+				Data_.ErrorMessage << "Unexpected #else: " << tpcl::FileNameToConsoleString(Data_.inputFile())
+					<< ':' << Data_.lineNo();
+				return TResult::SyntaxError;
 			}
-		Result = processLinesTillNextKeyword(Data_, Line_, Skip_? true: ValidExpressionFound);
-		//
-		ExpectingEndifOnly = true;
+			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : ValidExpressionFound);
+			//
+			ExpectingEndifOnly = true;
 		}
-	else if(Result == TResult::OperatorEndif) {
-		return TResult::OK;
+		else if(Result == TResult::OperatorEndif) {
+			return TResult::OK;
 		}
-	else {
-		assert(!"Return value is not expected.");
+		else {
+			assert(!"Return value is not expected.");
 		}
 	}
 }
