@@ -25,15 +25,26 @@
 
 namespace tpcl {
 // -----------------------------------------------------------------------
-#if defined(TPCL_MSC)
-	#define TPCL_TO_FNSTR(S_) L ## S_
-	#define TPCL_FNSTR(S_) TPCL_TO_FNSTR(S_)
-	typedef wchar_t TFileNameChar;
-	typedef std::wstring TFileNameString;
-	#define TPCL_FS_SEPARATOR L'\\'
-	#define TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T
+#if defined(TPCL_OS_WINDOWS)
+	#if defined(TPCL_MSC)
+		#define TPCL_TO_FNSTR(S_) L ## S_
+		#define TPCL_FNSTR(S_) TPCL_TO_FNSTR(S_)
+		#define TPCL_FNCHAR(S_) TPCL_TO_FNSTR(S_)
+		typedef wchar_t TFileNameChar;
+		typedef std::wstring TFileNameString;
+		#define TPCL_FS_SEPARATOR L'\\'
+		#define TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T
+	#else
+		#define TPCL_FNSTR(S_) S_
+		#define TPCL_FNCHAR(S_) S_
+		typedef char TFileNameChar;
+		typedef std::string TFileNameString;
+		#define TPCL_FS_SEPARATOR '\\'
+		#define TPCL_FILE_NAME_CHAR_TYPE_IS_CHAR
+	#endif
 #else
 	#define TPCL_FNSTR(S_) S_
+	#define TPCL_FNCHAR(S_) S_
 	typedef char TFileNameChar;
 	typedef std::string TFileNameString;
 	#define TPCL_FS_SEPARATOR '/'

@@ -405,11 +405,11 @@ std::string Utf8ToConsoleString(const char* UTF8_)
 	if(MultiByteToWideChar(CP_UTF8, 0, UTF8_, UTF8Size, (wchar_t*)(Temp.c_str()), CharsCount) <= 0)
 		return RetValue;
 	//
-	int LocalCharsCount = WideCharToMultiByte(CP_ACP, 0, Temp.c_str(), CharsCount, NULL, 0, NULL, NULL);
+	int LocalCharsCount = WideCharToMultiByte(CP_OEMCP, 0, Temp.c_str(), CharsCount, NULL, 0, NULL, NULL);
 	if(LocalCharsCount <= 0) return RetValue;
 	//
 	RetValue.resize(LocalCharsCount);
-	WideCharToMultiByte(CP_ACP, 0, Temp.c_str(), CharsCount, (char*)(RetValue.c_str()), LocalCharsCount, NULL, NULL);
+	WideCharToMultiByte(CP_OEMCP, 0, Temp.c_str(), CharsCount, (char*)(RetValue.c_str()), LocalCharsCount, NULL, NULL);
 	return RetValue;
 }
 

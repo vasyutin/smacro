@@ -161,7 +161,7 @@ bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TF
 {
 	TProcessData Data(Input_, Output_, mode());
 	if(!Data.initialized()) {
-		std::cerr << Data.errorMessage();
+		std::cerr << Data.errorMessage() << std::endl;
 		return false;
 	}
 	//
@@ -170,7 +170,7 @@ bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TF
 		TResult Result = readNextLine(Data, Line, true);
 		if(Result == TResult::OK) {
 			if(mode() == TMode::Processing && !Data.Output.write(Line.c_str(), Line.size())) {
-				std::cerr << "Error writing file '" << tpcl::FileNameToConsoleString(Output_) << "'.";
+				std::cerr << "Error writing file '" << tpcl::FileNameToConsoleString(Output_) << "'."  << std::endl;
 				return false;
 			}
 			continue;
@@ -184,17 +184,17 @@ bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TF
 		// There can be only #if
 		if(Result != TResult::OperatorIf) {
 			std::cerr << "Expected #if: " << tpcl::FileNameToConsoleString(Input_) << ':' << Data.lineNo() <<
-				".";
+				"."  << std::endl;
 			return false;
 		}
 		//
 		Result = processOperator(Data, Line, false);
 		if(Result == TResult::WriteError) {
-			std::cerr << "Can't write file: '" << tpcl::FileNameToConsoleString(Output_) << "'.";
+			std::cerr << "Can't write file: '" << tpcl::FileNameToConsoleString(Output_) << "'." << std::endl;
 			return false;
 		}
 		else if(Result != TResult::OK) {
-			std::cerr << Data.errorMessage();
+			std::cerr << Data.errorMessage() << std::endl;
 			return false;
 		}
 	}
@@ -240,7 +240,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt != m_Number.end()) {
 				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' is defined for the second time (file " << 
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ')';
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ").";
 				return TResult::SyntaxError;
 			}
 			auto ClassIt = m_NumbersGenerator.find(Class);
@@ -255,7 +255,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt == m_Number.end()) {
 				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run (file " << 
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ')';
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ").";
 				return TResult::SyntaxError;
 			}
 			std::string NumberString(std::to_string(NumberIt->second));
@@ -274,7 +274,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt == m_Number.end()) {
 				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run (file " << 
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ')';
+					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ").";
 				return TResult::SyntaxError;
 			}
 			std::string NumberString(std::to_string(NumberIt->second));
@@ -308,6 +308,8 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 			Data_.CurrentLines.pop_back();
 			continue;
 		}
+		(Data_.CurrentLines.back())++;
+
 		// Check if line starts with #
 		Index = firstNonSpace(Line_.cbegin(), Line_.cend());
 		if(Index == Line_.cend() || *Index != '#') {
@@ -339,6 +341,32 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 				#else
 					std::string FileName(Match[1].first, Match[1].second);
 				#endif
+				// Преобразовывем разделители к системным
+				for(auto it = FileName.begin(); it != FileName.end(); ++it) {
+					#if defined(TPCL_OS_WINDOWS)
+						if(*it == TPCL_FNCHAR('/')) *it = TPCL_FS_SEPARATOR;
+					#else
+						if(*it == '\\') *it = TPCL_FS_SEPARATOR;
+					#endif
+				}
+				// Удаляем повторяющиеся разделители
+				if(!FileName.empty()) {
+					for(auto it = FileName.begin() + 1; it != FileName.end();) {
+						if(*it == TPCL_FS_SEPARATOR && *(it - 1) == TPCL_FS_SEPARATOR) {
+							ptrdiff_t Offset = it - FileName.begin();
+							FileName.erase(Offset, 1);
+							it = FileName.begin() + Offset;
+						}
+						else {
+							++it;
+						}
+					}
+				}
+
+				if(FileName.find(L"admin") != std::string::npos) {
+					int a = 3;
+				}
+
 				Stream->open(FileName, std::ios::binary);
 				if(!(*Stream)) {
 					Data_.ErrorMessage << "Can't include file '" << tpcl::FileNameToConsoleString(FileName) << "': " <<
@@ -434,8 +462,7 @@ TProcessor::TResult TProcessor::processLinesTillNextKeyword(TProcessData &Data_,
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string &Line_, 
-	bool Skip_)
+TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string &Line_, bool Skip_)
 {
 	bool ValidExpressionFound;
 	if(!calculateExp(Line_, ValidExpressionFound, Data_)) return TResult::SyntaxError;
@@ -459,8 +486,7 @@ TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string
 		}
 		else if(Result == TResult::OperatorElif) {
 			if(ExpectingEndifOnly) {
-				Data_.ErrorMessage << "Unexpected #elif: " << tpcl::FileNameToConsoleString(Data_.inputFile())
-					<< ':' << Data_.lineNo();
+				Data_.ErrorMessage << "Unexpected #elif: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
 				return TResult::SyntaxError;
 			}
 			// Always check the expression to find errors
@@ -475,12 +501,10 @@ TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string
 		}
 		else if(Result == TResult::OperatorElse) {
 			if(ExpectingEndifOnly) {
-				Data_.ErrorMessage << "Unexpected #else: " << tpcl::FileNameToConsoleString(Data_.inputFile())
-					<< ':' << Data_.lineNo();
+				Data_.ErrorMessage << "Unexpected #else: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
 				return TResult::SyntaxError;
 			}
 			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : ValidExpressionFound);
-			//
 			ExpectingEndifOnly = true;
 		}
 		else if(Result == TResult::OperatorEndif) {
