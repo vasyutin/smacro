@@ -1,0 +1,49 @@
+
+#if defined(V1)
+	-OK 1
+	#if defined(V2)
+		-OK 2
+	#else
+		-Error
+	#endif
+	-OK 3
+#else
+	-Error
+	#if defined(V2)
+		-Error
+	#else
+		-Error
+	#endif
+	-Error
+#endif
+
+#if !defined(V1)
+	-Error
+	#if defined(V2)
+		-Error
+	#else
+		-Error
+	#endif
+	-Error
+#else
+	-OK 4
+	#if defined(V2)
+		-OK 5
+	#else
+		-Error
+	#endif
+	-OK 6
+	#if !defined(V2)
+		-Error
+	#else
+		-OK 7
+		#if !defined(V1)
+		#else
+			-OK 8
+		#endif
+		-OK 9
+	#endif
+	-OK 10
+#endif
+
+-OK 11

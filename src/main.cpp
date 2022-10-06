@@ -170,7 +170,7 @@ bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &Ex
 				ExcludePatterns_.push_back(std::move(TExcludePatterns::value_type(Value)));
 			}
 			catch(std::regex_error&) {
-				std::cerr << "Invalid pattern: '" << tpcl::FileNameToConsoleString(Value) << "'.";
+				std::cerr << "Invalid file mask '" << tpcl::FileNameToConsoleString(Value) << "'.";
 				return false;
 			}
 			//

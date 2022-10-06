@@ -128,4 +128,6 @@ private:
 		std::string::const_iterator End_);
 
 	static bool matchesPatterns(const tpcl::TFileNameString& FileName_, const TExcludePatterns& Patterns_);
+
+	static std::string fileAndLineMessageEnding(const TProcessData &Data_);
 };

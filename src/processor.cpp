@@ -32,6 +32,18 @@
 //#define DEBUG_OUTPUT
 
 // -----------------------------------------------------------------------
+std::string TProcessor::fileAndLineMessageEnding(const TProcessData &Data_)
+{
+	std::string RetValue;
+	RetValue = ')';
+	RetValue +=	tpcl::FileNameToConsoleString(Data_.inputFile());
+	RetValue += ':';
+	RetValue += std::to_string(Data_.lineNo());
+	RetValue += ").";
+	return RetValue;
+}
+
+// -----------------------------------------------------------------------
 TProcessor::TProcessor(const TParameters &Parameters_, TMode Mode_): 
 	m_Mode(Mode_),
 	m_Variables(Parameters_.Variables),
@@ -130,7 +142,7 @@ TProcessor::TProcessData::TProcessData(const tpcl::TFileNameString &InputFile_, 
 	std::unique_ptr<std::ifstream> Stream(new std::ifstream);
 	Stream->open(InputFile_, std::ios::binary);
 	if(!(*Stream)) {
-		ErrorMessage = "Can't open input file: '";
+		ErrorMessage = "Can't open input file '";
 		ErrorMessage += tpcl::FileNameToConsoleString(InputFile_);
 		ErrorMessage += "'.";
 		return;
@@ -142,7 +154,7 @@ TProcessor::TProcessData::TProcessData(const tpcl::TFileNameString &InputFile_, 
 	if(Mode_ == TMode::Processing) {
 		Output.open(OutputFile_, std::ios::binary);
 		if(!Output) {
-			ErrorMessage = "Can't open output file: '";
+			ErrorMessage = "Can't open output file '";
 			ErrorMessage += tpcl::FileNameToConsoleString(OutputFile_);
 			ErrorMessage += "'.";
 			return;
@@ -183,14 +195,13 @@ bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TF
 		assert(isOperator(Result));
 		// There can be only #if
 		if(Result != TResult::OperatorIf) {
-			std::cerr << "Expected #if: " << tpcl::FileNameToConsoleString(Input_) << ':' << Data.lineNo() <<
-				"."  << std::endl;
+			std::cerr << "Expected #if " << fileAndLineMessageEnding(Data) << std::endl;
 			return false;
 		}
 		//
 		Result = processOperator(Data, Line, false);
 		if(Result == TResult::WriteError) {
-			std::cerr << "Can't write file: '" << tpcl::FileNameToConsoleString(Output_) << "'." << std::endl;
+			std::cerr << "Can't write file '" << tpcl::FileNameToConsoleString(Output_) << "'." << std::endl;
 			return false;
 		}
 		else if(Result != TResult::OK) {
@@ -211,8 +222,7 @@ TProcessor::TResult TProcessor::valuesSubstitution(TProcessData& Data_, std::str
 			std::string Variable(Match[1].first, Match[1].second);
 			TVariables::const_iterator it = m_Variables.find(Variable);
 			if(it == m_Variables.end()) {
-				Data_.ErrorMessage << "Variable '" << tpcl::Utf8ToConsoleString(Variable) << "' is not defined (file " << 
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ')';
+				Data_.ErrorMessage << "Variable '" << tpcl::Utf8ToConsoleString(Variable) << "' is not defined " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			else {
@@ -239,8 +249,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 			std::string Class(Match[2].first, Match[2].second);
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt != m_Number.end()) {
-				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' is defined for the second time (file " << 
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ").";
+				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' is defined for the second time " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			auto ClassIt = m_NumbersGenerator.find(Class);
@@ -254,8 +263,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 		else {
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt == m_Number.end()) {
-				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run (file " << 
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ").";
+				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			std::string NumberString(std::to_string(NumberIt->second));
@@ -273,8 +281,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 			//
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt == m_Number.end()) {
-				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run (file " << 
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo()) << ").";
+				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			std::string NumberString(std::to_string(NumberIt->second));
@@ -363,14 +370,9 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 					}
 				}
 
-				if(FileName.find(L"admin") != std::string::npos) {
-					int a = 3;
-				}
-
 				Stream->open(FileName, std::ios::binary);
 				if(!(*Stream)) {
-					Data_.ErrorMessage << "Can't include file '" << tpcl::FileNameToConsoleString(FileName) << "': " <<
-						tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
+					Data_.ErrorMessage << "Can't include file '" << tpcl::FileNameToConsoleString(FileName) << "' " << fileAndLineMessageEnding(Data_);
 					return TResult::SyntaxError;
 				}
 				Data_.Input.push_back(std::move(Stream));
@@ -406,8 +408,7 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 	while(!Line_.empty() && *(Line_.end() - 1) == '\\') {
 		std::string NewLine;
 		if(!std::getline(*Data_.Input.back(), NewLine)) {
-			Data_.ErrorMessage << "Line ends with '\\' but next string is not present: " <<
-				tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << std::to_string(Data_.lineNo());
+			Data_.ErrorMessage << "Line ends with '\\' but next string is not present " << fileAndLineMessageEnding(Data_);
 			return TResult::SyntaxError;
 		}
 		(Data_.CurrentLines.back())++;
@@ -423,15 +424,13 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 	}
 	if(Result == TResult::OperatorEndif || Result == TResult::OperatorElse) {
 		if(!Line_.empty()) {
-			Data_.ErrorMessage << "Unexpected symbols after keyword: " <<
-				tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+			Data_.ErrorMessage << "Unexpected symbols after keyword " << fileAndLineMessageEnding(Data_);
 			return TResult::SyntaxError;
 		}
 	}
 	else if(Result == TResult::OperatorIf || Result == TResult::OperatorElif) {
 		if(Line_.empty()) {
-			Data_.ErrorMessage << "Expression expected after keyword: " <<
-				tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+			Data_.ErrorMessage << "Expression expected after keyword " << fileAndLineMessageEnding(Data_);
 			return TResult::SyntaxError;
 		}
 	}
@@ -464,47 +463,72 @@ TProcessor::TResult TProcessor::processLinesTillNextKeyword(TProcessData &Data_,
 // -----------------------------------------------------------------------
 TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string &Line_, bool Skip_)
 {
-	bool ValidExpressionFound;
-	if(!calculateExp(Line_, ValidExpressionFound, Data_)) return TResult::SyntaxError;
+	struct THelper {
+		static TResult processBody(TProcessData &Data_, bool Skip_) {
+			return TResult::OK;
+		}
+	};
+
+	// ---
+	bool ConditionIsTrue;
+	if(!calculateExp(Line_, ConditionIsTrue, Data_)) return TResult::SyntaxError;
 	//
 	bool ExpectingEndifOnly = false;
-	TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ValidExpressionFound));
+
+	TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
+	if(TResult::EndOfFile == Result) {
+		Data_.ErrorMessage << "Expected #endif " << fileAndLineMessageEnding(Data_);
+		return TResult::SyntaxError;
+	}
+	else if(TResult::SyntaxError == Result || TResult::WriteError == Result) {
+		return Result;
+	}
+	//
+	if(TResult::OperatorIf == Result) {
+		return processOperator(Data_, Line_, Skip_? true: (!ConditionIsTrue));
+	}
+	else if(TResult::OperatorElse == Result) {
+		Result = THelper::processBody(Data_
+
+	}
+	else if(TResult::OperatorElif == Result) {
+		
+
+	}
+	
+
+
+
+
 	while(true) {
-		if(Result == TResult::EndOfFile) {
-			Data_.ErrorMessage << "Expected #endif: " << tpcl::FileNameToConsoleString(Data_.inputFile()) <<
-				':' << Data_.lineNo();
-			return TResult::SyntaxError;
-		}
-		else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
-		else if(Result == TResult::WriteError) return TResult::WriteError;
 
 		// Normal results
 		else if(Result == TResult::OperatorIf) {
-			Result = processOperator(Data_, Line_, Skip_ ? true : (!ValidExpressionFound));
+			Result = processOperator(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
 			if(Result != TResult::OK) return Result;
-			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ValidExpressionFound));
+			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
 		}
 		else if(Result == TResult::OperatorElif) {
 			if(ExpectingEndifOnly) {
-				Data_.ErrorMessage << "Unexpected #elif: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+				Data_.ErrorMessage << "Unexpected #elif " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			// Always check the expression to find errors
 			bool ElifExpressionResult;
 			if(!calculateExp(Line_, ElifExpressionResult, Data_)) return TResult::SyntaxError;
 			//
-			bool SkipThis = Skip_ || ValidExpressionFound;
+			bool SkipThis = Skip_ || ConditionIsTrue;
 			Result = processLinesTillNextKeyword(Data_, Line_, SkipThis ? true : (!ElifExpressionResult));
 			//
-			if(!ValidExpressionFound && ElifExpressionResult) ValidExpressionFound = true;
+			if(!ConditionIsTrue && ElifExpressionResult) ConditionIsTrue = true;
 			assert(!ExpectingEndifOnly);
 		}
 		else if(Result == TResult::OperatorElse) {
 			if(ExpectingEndifOnly) {
-				Data_.ErrorMessage << "Unexpected #else: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+				Data_.ErrorMessage << "Unexpected #else " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
-			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : ValidExpressionFound);
+			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : ConditionIsTrue);
 			ExpectingEndifOnly = true;
 		}
 		else if(Result == TResult::OperatorEndif) {
@@ -515,6 +539,64 @@ TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string
 		}
 	}
 }
+
+
+
+// -----------------------------------------------------------------------
+/*
+TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string &Line_, bool Skip_)
+{
+	bool ConditionIsTrue;
+	if(!calculateExp(Line_, ConditionIsTrue, Data_)) return TResult::SyntaxError;
+	//
+	bool ExpectingEndifOnly = false;
+	TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
+	while(true) {
+		if(Result == TResult::EndOfFile) {
+			Data_.ErrorMessage << "Expected #endif " << fileAndLineMessageEnding(Data_);
+			return TResult::SyntaxError;
+		}
+		else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
+		else if(Result == TResult::WriteError) return TResult::WriteError;
+
+		// Normal results
+		else if(Result == TResult::OperatorIf) {
+			Result = processOperator(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
+			if(Result != TResult::OK) return Result;
+			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
+		}
+		else if(Result == TResult::OperatorElif) {
+			if(ExpectingEndifOnly) {
+				Data_.ErrorMessage << "Unexpected #elif " << fileAndLineMessageEnding(Data_);
+				return TResult::SyntaxError;
+			}
+			// Always check the expression to find errors
+			bool ElifExpressionResult;
+			if(!calculateExp(Line_, ElifExpressionResult, Data_)) return TResult::SyntaxError;
+			//
+			bool SkipThis = Skip_ || ConditionIsTrue;
+			Result = processLinesTillNextKeyword(Data_, Line_, SkipThis ? true : (!ElifExpressionResult));
+			//
+			if(!ConditionIsTrue && ElifExpressionResult) ConditionIsTrue = true;
+			assert(!ExpectingEndifOnly);
+		}
+		else if(Result == TResult::OperatorElse) {
+			if(ExpectingEndifOnly) {
+				Data_.ErrorMessage << "Unexpected #else " << fileAndLineMessageEnding(Data_);
+				return TResult::SyntaxError;
+			}
+			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : ConditionIsTrue);
+			ExpectingEndifOnly = true;
+		}
+		else if(Result == TResult::OperatorEndif) {
+			return TResult::OK;
+		}
+		else {
+			assert(!"Return value is not expected.");
+		}
+	}
+}
+*/
 
 // -----------------------------------------------------------------------
 bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, TProcessData &Data_)
@@ -656,8 +738,7 @@ struct THelper {
 			case TLexemeType::Variable: {
 				TVariables::const_iterator iVar = This_.m_Variables.find(it->Value);
 				if(iVar == This_.m_Variables.end()) {
-					Data_.ErrorMessage << "Undefined variable '" << 
-						tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+					Data_.ErrorMessage << "Undefined variable '" << tpcl::Utf8ToConsoleString(it->Value) << "' " << fileAndLineMessageEnding(Data_);
 					return false;
 					}
 				Value.Type = TValueType::String;
@@ -753,8 +834,7 @@ struct THelper {
 						}
 					}
 				if(!Found) {
-					Data_.ErrorMessage << "Open bracket expected in expression" << 
-						tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+					Data_.ErrorMessage << "Open bracket expected in expression " << fileAndLineMessageEnding(Data_);
 					return false;
 					}
 				}
@@ -767,8 +847,7 @@ struct THelper {
 					int Precedence = operationPrecedence(it->Type);
 					while(operationPrecedence(Stack.top().Type) >= Precedence) {
 						if(Stack.top().Type == TValueType::OpenBracket) {
-							Data_.ErrorMessage << "Unpaired bracket" << 
-								tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+							Data_.ErrorMessage << "Unpaired bracket " << fileAndLineMessageEnding(Data_);
 							return false;
 							}
 						Result.push_back(Stack.top());
@@ -782,8 +861,7 @@ struct THelper {
 		//
 		while(!Stack.empty()) {
 			if(Stack.top().Type == TValueType::OpenBracket) {
-				Data_.ErrorMessage << "Unpaired bracket" << 
-					tpcl::FileNameToConsoleString(Data_.inputFile()) << ':' << Data_.lineNo();
+				Data_.ErrorMessage << "Unpaired bracket " << fileAndLineMessageEnding(Data_);
 				return false;
 				}
 			Result.push_back(Stack.top());
@@ -951,13 +1029,11 @@ struct THelper {
 //
 std::vector<TLexeme> Lexemes;
 if(!THelper::lexAnalysis(*this, Line_, Lexemes)) {
-	Data_.ErrorMessage << "Error in expression: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
-		':' << Data_.lineNo();
+	Data_.ErrorMessage << "Error in expression " << fileAndLineMessageEnding(Data_);
 	return false;
 	}
 if(Lexemes.empty()) {
-	Data_.ErrorMessage << "Expression expected: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
-		':' << Data_.lineNo();
+	Data_.ErrorMessage << "Expression expected " << fileAndLineMessageEnding(Data_);
 	return false;
 	}
 
@@ -977,8 +1053,7 @@ if(!THelper::toVMValues(*this, Lexemes, Values, Data_) ||
 	}
 
 if(Values.empty()) {
-	Data_.ErrorMessage << "Invalid expression: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
-		':' << Data_.lineNo();
+	Data_.ErrorMessage << "Invalid expression " << fileAndLineMessageEnding(Data_);
 	return false;
 	}
 
@@ -992,8 +1067,7 @@ if(Values.empty()) {
 #endif
 
 if(!THelper::runVM(Values, Result_)) {
-	Data_.ErrorMessage << "Invalid expression: " << tpcl::FileNameToConsoleString(Data_.inputFile()) << 
-		':' << Data_.lineNo();
+	Data_.ErrorMessage << "Invalid expression " << fileAndLineMessageEnding(Data_);
 	return false;
 	}
 
