@@ -308,7 +308,6 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 			continue;
 		}
 		(Data_.CurrentLines.back())++;
-		Line_ += (char)0x0A;
 
 		// Check if line starts with #
 		Index = firstNonSpace(Line_.cbegin(), Line_.cend());
@@ -442,7 +441,8 @@ TProcessor::TResult TProcessor::processLinesTillNextKeyword(TProcessData &Data_,
 		TResult Result = readNextLine(Data_, Line_, !Skip_);
 		if(Result == TResult::OK) {
 			if(mode() == TMode::Processing && !Skip_) {
-				if(!Data_.Output.write(Line_.c_str(), Line_.size())) {
+				if(!Data_.Output.write(Line_.c_str(), Line_.size()) ||
+					!Data_.Output.put((char)0x0A)) {
 					return TResult::WriteError;
 				}
 			}
