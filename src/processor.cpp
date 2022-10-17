@@ -179,20 +179,12 @@ bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TF
 	//
 	std::string Line;
 	while(true) {
-		TResult Result = readNextLine(Data, Line, true);
-		if(Result == TResult::OK) {
-			if(mode() == TMode::Processing && !Data.Output.write(Line.c_str(), Line.size())) {
-				std::cerr << "Error writing file '" << tpcl::FileNameToConsoleString(Output_) << "'."  << std::endl;
-				return false;
-			}
-			continue;
-		}
-		else if(Result == TResult::EndOfFile)
+		auto Result = processLinesTillNextKeyword(Data, Line, false);
+		if(Result == TResult::EndOfFile)
 			return true;
 		else if(Result == TResult::SyntaxError)
 			return false;
-		//
-		assert(isOperator(Result));
+
 		// There can be only #if
 		if(Result != TResult::OperatorIf) {
 			std::cerr << "Expected #if " << fileAndLineMessageEnding(Data) << std::endl;
@@ -316,10 +308,15 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 			continue;
 		}
 		(Data_.CurrentLines.back())++;
+		Line_ += (char)0x0A;
 
 		// Check if line starts with #
 		Index = firstNonSpace(Line_.cbegin(), Line_.cend());
-		if(Index == Line_.cend() || *Index != '#') {
+		// String is empty
+		if(Index == Line_.cend()) 
+			return TResult::OK;
+
+		if(*Index != '#') {
 			TResult Res = valuesSubstitution(Data_, Line_);
 			if(TResult::OK != Res) return Res;
 			return autoNumbering(Data_, Line_);
@@ -463,140 +460,63 @@ TProcessor::TResult TProcessor::processLinesTillNextKeyword(TProcessData &Data_,
 // -----------------------------------------------------------------------
 TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string &Line_, bool Skip_)
 {
-	struct THelper {
-		static TResult processBody(TProcessData &Data_, bool Skip_) {
-			return TResult::OK;
-		}
-	};
-
-	// ---
-	bool ConditionIsTrue;
-	if(!calculateExp(Line_, ConditionIsTrue, Data_)) return TResult::SyntaxError;
-	//
-	bool ExpectingEndifOnly = false;
-
-	TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
-	if(TResult::EndOfFile == Result) {
-		Data_.ErrorMessage << "Expected #endif " << fileAndLineMessageEnding(Data_);
+	bool TrueConditionExists, CurrentConditionIsTrue;
+	if(!calculateExp(Line_, CurrentConditionIsTrue, Data_)) 
 		return TResult::SyntaxError;
-	}
-	else if(TResult::SyntaxError == Result || TResult::WriteError == Result) {
-		return Result;
-	}
-	//
-	if(TResult::OperatorIf == Result) {
-		return processOperator(Data_, Line_, Skip_? true: (!ConditionIsTrue));
-	}
-	else if(TResult::OperatorElse == Result) {
-		Result = THelper::processBody(Data_
-
-	}
-	else if(TResult::OperatorElif == Result) {
-		
-
-	}
-	
-
-
-
+	TrueConditionExists = CurrentConditionIsTrue;
 
 	while(true) {
-
-		// Normal results
-		else if(Result == TResult::OperatorIf) {
-			Result = processOperator(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
-			if(Result != TResult::OK) return Result;
-			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
-		}
-		else if(Result == TResult::OperatorElif) {
-			if(ExpectingEndifOnly) {
-				Data_.ErrorMessage << "Unexpected #elif " << fileAndLineMessageEnding(Data_);
-				return TResult::SyntaxError;
-			}
-			// Always check the expression to find errors
-			bool ElifExpressionResult;
-			if(!calculateExp(Line_, ElifExpressionResult, Data_)) return TResult::SyntaxError;
-			//
-			bool SkipThis = Skip_ || ConditionIsTrue;
-			Result = processLinesTillNextKeyword(Data_, Line_, SkipThis ? true : (!ElifExpressionResult));
-			//
-			if(!ConditionIsTrue && ElifExpressionResult) ConditionIsTrue = true;
-			assert(!ExpectingEndifOnly);
-		}
-		else if(Result == TResult::OperatorElse) {
-			if(ExpectingEndifOnly) {
-				Data_.ErrorMessage << "Unexpected #else " << fileAndLineMessageEnding(Data_);
-				return TResult::SyntaxError;
-			}
-			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : ConditionIsTrue);
-			ExpectingEndifOnly = true;
-		}
-		else if(Result == TResult::OperatorEndif) {
-			return TResult::OK;
-		}
-		else {
-			assert(!"Return value is not expected.");
-		}
-	}
-}
-
-
-
-// -----------------------------------------------------------------------
-/*
-TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string &Line_, bool Skip_)
-{
-	bool ConditionIsTrue;
-	if(!calculateExp(Line_, ConditionIsTrue, Data_)) return TResult::SyntaxError;
-	//
-	bool ExpectingEndifOnly = false;
-	TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
-	while(true) {
-		if(Result == TResult::EndOfFile) {
+		TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!CurrentConditionIsTrue));
+		if(TResult::EndOfFile == Result) {
 			Data_.ErrorMessage << "Expected #endif " << fileAndLineMessageEnding(Data_);
 			return TResult::SyntaxError;
 		}
-		else if(Result == TResult::SyntaxError) return TResult::SyntaxError;
-		else if(Result == TResult::WriteError) return TResult::WriteError;
+		else if(TResult::SyntaxError == Result || TResult::WriteError == Result) {
+			return Result;
+		}
 
-		// Normal results
-		else if(Result == TResult::OperatorIf) {
-			Result = processOperator(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
-			if(Result != TResult::OK) return Result;
-			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : (!ConditionIsTrue));
+		// ---
+		if(TResult::OperatorIf == Result) {
+			Result = processOperator(Data_, Line_, Skip_? true: (!CurrentConditionIsTrue));
+			if(TResult::OK != Result) return Result;
 		}
-		else if(Result == TResult::OperatorElif) {
-			if(ExpectingEndifOnly) {
-				Data_.ErrorMessage << "Unexpected #elif " << fileAndLineMessageEnding(Data_);
-				return TResult::SyntaxError;
-			}
-			// Always check the expression to find errors
-			bool ElifExpressionResult;
-			if(!calculateExp(Line_, ElifExpressionResult, Data_)) return TResult::SyntaxError;
-			//
-			bool SkipThis = Skip_ || ConditionIsTrue;
-			Result = processLinesTillNextKeyword(Data_, Line_, SkipThis ? true : (!ElifExpressionResult));
-			//
-			if(!ConditionIsTrue && ElifExpressionResult) ConditionIsTrue = true;
-			assert(!ExpectingEndifOnly);
+		else if(TResult::OperatorElse == Result) {
+			break;
 		}
-		else if(Result == TResult::OperatorElse) {
-			if(ExpectingEndifOnly) {
-				Data_.ErrorMessage << "Unexpected #else " << fileAndLineMessageEnding(Data_);
-				return TResult::SyntaxError;
-			}
-			Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true : ConditionIsTrue);
-			ExpectingEndifOnly = true;
-		}
-		else if(Result == TResult::OperatorEndif) {
+		else if(TResult::OperatorEndif == Result) {
 			return TResult::OK;
 		}
 		else {
-			assert(!"Return value is not expected.");
+			assert(TResult::OperatorElif == Result);
+			// Вызываем, чтобы проверить синтаксис условия, даже если это условие не проверяется
+			if(!calculateExp(Line_, CurrentConditionIsTrue, Data_)) return TResult::SyntaxError;
+			if(TrueConditionExists)
+				CurrentConditionIsTrue = false;
+			else 
+				TrueConditionExists = CurrentConditionIsTrue;
+		}
+	}
+
+	// Обработка else
+	while(true) {
+		TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true: TrueConditionExists);
+		if(TResult::OperatorIf == Result) {
+			Result = processOperator(Data_, Line_, Skip_? true: TrueConditionExists);
+			if(TResult::OK != Result) return Result;
+			continue;
+		}
+		if(TResult::OperatorEndif == Result) {
+			return TResult::OK;
+		}
+		else if(TResult::SyntaxError == Result || TResult::WriteError == Result) {
+			return Result;
+		}
+		else {
+			Data_.ErrorMessage << "Expected #endif " << fileAndLineMessageEnding(Data_);
+			return TResult::SyntaxError;
 		}
 	}
 }
-*/
 
 // -----------------------------------------------------------------------
 bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, TProcessData &Data_)
