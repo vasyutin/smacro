@@ -1,7 +1,7 @@
 /*
 * This file is part of SMACRO.
 *
-* Written by Sergey Vasyutin (in[at]vasyut.in)
+* Written by Sergey Vasyutin (sergey [at] vasyut.in)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -50,13 +50,13 @@ TProcessor::TProcessor(const TParameters &Parameters_, TMode Mode_):
 	m_ExcludePatterns(Parameters_.ExcludePatterns),
 	m_IgnorePatterns(Parameters_.IgnorePatterns),
 	m_VariableRegExp("[$][{]([A-Za-z0-9_]+)[}]"),
-	m_IfRegExp("#if\\s+"), 
-	m_ElifRegExp("#elif\\s+"), 
-	m_ElseRegExp("#else"),
-	m_EndifRegExp("#endif"), 
-	m_CommentOperatorRegExp("#[/][/]"),
+	m_IfRegExp(Parameters_.AlternativeOperatorPrefix? "@if\\s+": "#if\\s+"), 
+	m_ElifRegExp(Parameters_.AlternativeOperatorPrefix? "@elif\\s+": "#elif\\s+"), 
+	m_ElseRegExp(Parameters_.AlternativeOperatorPrefix? "@else": "#else"),
+	m_EndifRegExp(Parameters_.AlternativeOperatorPrefix? "@endif": "#endif"), 
+	m_CommentOperatorRegExp(Parameters_.AlternativeOperatorPrefix? "@[/][/]": "#[/][/]"),
 	m_CommentRegExp("[/][/]"),
-	m_IncludeRegExp("#include\\s*[<]([^>]*)[>]"),
+	m_IncludeRegExp(Parameters_.AlternativeOperatorPrefix? "@include\\s*[<]([^>]*)[>]": "#include\\s*[<]([^>]*)[>]"),
 	m_NumberRegExp("[$]number[{]\\s*([^{}|\\s]+)\\s*[|]\\s*([^{}|\\s]+)\\s*[}]"), 
 	m_ReferenceRegExp("[$]ref[{]\\s*([^{}|\\s]+)\\s*[}]")
 {

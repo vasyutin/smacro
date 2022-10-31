@@ -1,7 +1,7 @@
 /*
 * This file is part of SMACRO.
 *
-* Written by Sergey Vasyutin (in[at]vasyut.in)
+* Written by Sergey Vasyutin (sergey [at] vasyut.in)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -68,11 +68,12 @@ bool ParseVariables(const tpcl::TFileNameChar *FileName_, TParameters &Parameter
 		return false;
 	}
 	//
-	size_t LineNo = 1;
+	size_t LineNo = 0;
 	std::string Line;
 	TProcessor Processor(Parameters_);
 	while(std::getline(File, Line)) {
 		// Удаляем пробелы в начале и конце строки
+		LineNo++;
 		TrimString(Line);
 		if(Line.empty() || Line[0] == '#') continue;
 		if(!Processor.processString(Line)) {
@@ -182,6 +183,44 @@ bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &Ex
 }
 
 // -----------------------------------------------------------------------
+bool ParseFileList(const tpcl::TFileNameChar *FileName_, std::vector<tpcl::TFileNameString> &Files_)
+{
+	std::ifstream File(FileName_);
+	if(!File) {
+		std::cerr << "Can't open file '" << tpcl::FileNameToConsoleString(FileName_) << "'." << std::endl;
+		return false;
+	}
+	//
+	size_t LineNo = 0;
+	std::string Line;
+	while(std::getline(File, Line)) {
+		LineNo++;
+		// Удаляем пробелы в начале и конце строки
+		TrimString(Line);
+		if(Line.empty() || Line[0] == '#') continue;
+
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+			tpcl::TFileNameString String;
+			if(!tpcl::Utf8ToWide(Line, String)) {
+				std::cerr << "Invalid UTF-8 string (" << tpcl::FileNameToConsoleString(FileName_) << ": " << LineNo << ")." << std::endl;
+				return false;
+			}
+			Files_.emplace_back(std::move(String));
+		#elif defined(TPCL_OS_WINDOWS)
+			std::string String;
+			if(!tpcl::Utf8ToLocal(Line, String)) {
+				std::cerr << "Invalid UTF-8 string (" << tpcl::FileNameToConsoleString(FileName_) << ": " << LineNo << ")." << std::endl;
+				return false;
+			}
+			Files_.emplace_back(std::move(String));
+		#else
+			Files_.emplace_back(std::move(Line));
+		#endif
+	}
+	return true;
+}
+
+// -----------------------------------------------------------------------
 const char *g_UsageMessage = 
 	"All the files being processed (except the files excluded from the processing with the -e switch) are assumed to be in UTF-8 encoding.\n"
 	"Example:\n"
@@ -206,16 +245,18 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 	#endif
 
 	TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "2.0");
-	TCLAP::ValueArg<std::string> InputFolder("s", "src", "The folder, containing documentation files to process", true, std::string(), "source folder", CmdParser);
-	TCLAP::ValueArg<std::string> OutputFolder("d", "dest", "The destination folder for the processed files", true, std::string(), "destination folder", CmdParser);
+	TCLAP::ValueArg<std::string> InputFolder("s", "source", "The folder, containing documentation files to process", true, std::string(), "source folder", CmdParser);
+	TCLAP::ValueArg<std::string> OutputFolder("d", "destination", "The destination folder for the processed files", true, std::string(), "destination folder", CmdParser);
 	TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
 		true, std::string(), "variables file", CmdParser);
 	TCLAP::MultiArg<std::string> ExcludeMasks("e", "exclude",
 		"The mask of filename to exclude from processing. This files are only copied to the output folder.", false, "exclude masks", CmdParser);
 	TCLAP::MultiArg<std::string> IgnoreMasks("i", "ignore",
 		"The mask of filename to ignore. This files are not copied to the output folder.", false, "ignore masks", CmdParser);
-	TCLAP::ValueArg<std::string> OrderFile("o", "order", "The file containing the list of the files to parse to look to the $number directive", false, std::string(), "order file", 
-		CmdParser);
+	TCLAP::ValueArg<std::string> OrderFile("o", "order", "The file containing the list of the files to parse to look to the $number directive in required order", false, std::string(), 
+		"order file", CmdParser);
+	TCLAP::SwitchArg AtPrefixed("@", "at-prefixed", "Use symbol '@' instead of '#' as the prefix for the control operators (@//, @if, @elif, @else, @endif and @include "
+		"instead of #//, #if, #elif, #else, #endif and #include) in text with plenty of '#' (ex. in Markdown)", CmdParser, false);
 
 	try {
 		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
@@ -233,10 +274,16 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 		tpcl::Utf8ToWide(InputFolder.getValue(), Parameters_.InputFolder);
 		tpcl::Utf8ToWide(OutputFolder.getValue(), Parameters_.OutputFolder);
 		if(!ParseVariables(tpcl::Utf8ToWideString(VariablesFile.getValue()).c_str(), Parameters_)) return false;
+		if(OrderFile.isSet()) {
+			if(!ParseFileList(tpcl::Utf8ToWideString(OrderFile.getValue()).c_str(), Parameters_.OrderedFileList)) return false;
+		}
 	#else
 		Parameters_.InputFolder = InputFolder.getValue();
 		Parameters_.OutputFolder = OutputFolder.getValue();
 		if(!ParseVariables(VariablesFile.getValue().c_str(), Parameters_)) return false;
+		if(OrderFile.isSet()) {
+			if(!ParseFileList(OrderFile.getValue().c_str(), Parameters_.OrderedFileList)) return false;
+		}
 	#endif
 
 	tpcl::AppendSeparatorIfAbsent(Parameters_.InputFolder);
@@ -250,6 +297,7 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 		std::cerr << "Error specifying ignore mask." << std::endl;
 		return false;
 	}
+	Parameters_.AlternativeOperatorPrefix = AtPrefixed.isSet();
 	return true;	
 }
 
@@ -312,6 +360,18 @@ bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameStr
 }
 
 // -----------------------------------------------------------------------
+bool ProcessList(const std::vector<tpcl::TFileNameString> &OrderedList_, TProcessor &Processor_)
+{
+	assert(Processor_.mode() == TProcessor::TMode::Collecting);
+	tpcl::TFileNameString NullOutput;
+	for(auto it = OrderedList_.begin(); it != OrderedList_.end(); ++it) {
+		if(!Processor_.processFile(*it, NullOutput))
+			return false;
+	}
+	return true;
+}
+
+// -----------------------------------------------------------------------
 // Processes the folder with the documentation in the HTML format.
 // Gets the file with the values of variables and processes the documentation's
 // files according to the values of the variables.
@@ -345,8 +405,17 @@ bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameStr
 	}
 
 	TProcessor Processor(Parameters, TProcessor::TMode::Collecting);
-	if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor) ||
-		(Processor.setMode(TProcessor::TMode::Processing), !ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor)))
+	if(Parameters.OrderedFileList.empty()) {
+		if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor))
+			return RETCODE_PROCESS_ERROR;
+	}
+	else {
+		if(!ProcessList(Parameters.OrderedFileList, Processor))
+			return RETCODE_PROCESS_ERROR;
+	}
+
+	Processor.setMode(TProcessor::TMode::Processing);
+	if(!ProcessFolder(Parameters.InputFolder, Parameters.OutputFolder, Processor))
 		return RETCODE_PROCESS_ERROR;
 
 	return RETCODE_OK;

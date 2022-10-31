@@ -3,7 +3,7 @@
 /*
 * This file is part of SMACRO.
 *
-* Written by Sergey Vasyutin (in[at]vasyut.in)
+* Written by Sergey Vasyutin (sergey [at] vasyut.in)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -38,4 +38,6 @@ struct TParameters {
 	tpcl::TFileNameString OutputFolder;
 	TVariables Variables;
 	TExcludePatterns ExcludePatterns, IgnorePatterns;
+	std::vector<tpcl::TFileNameString> OrderedFileList;
+	bool AlternativeOperatorPrefix;
 	};
