@@ -1,5 +1,68 @@
-# SMACRO
-A simple macro processor. A tool that helps to prepare documentation.
+# Макропроцессор SMACRO
+
+## Назначение и функции
+
+SMACRO - простой макропроцессор, который создан для подготовки нескольких вариантов документации на основе одних исходных файлов. Тем не менее область применения SMACRO не ограничивается разработкой документации, программа работает с любыми текстовыми файлами.
+
+Основные функции:
+* включение в итоговые текстовые файлы блоков исходных текстовых файлов в зависимости от значений переменных, заданных в конфигурационных файлах;
+* подстановка вместо переменных в исходных текстовых файлах их значений, заданных в конфигурационных файлах;
+* автоматическая нумерация разделов, рисунков и пр. в тексте.
+
+## Использование
+
+```
+smacro  [-h] [--version] [-e <exclude masks> ...] [-i <ignore masks>...] 
+        [-o <order file>] -s <source folder> -d <destination folder>  
+        -v <variables file>
+```
+где:
+\
+`-s <source folder>,  --src <source folder>`
+\
+(required) The folder, containing documentation files to process
+
+   -d <destination folder>,  --dest <destination folder>
+     (required) The destination folder for the processed files
+
+   -v <variables file>,  --variables <variables file>
+     (required) The file, containing values of the variables for the
+     current run (the text in the file is assumed to be in UTF-8).
+
+   -e <exclude masks>,  --exclude <exclude masks>  (accepted multiple
+      times)
+     The mask of filename to exclude from processing. This files are only
+     copied to the output folder.
+
+   -i <ignore masks>,  --ignore <ignore masks>  (accepted multiple times)
+     The mask of filename to ignore. This files are not copied to the
+     output folder.
+
+   -o <order file>,  --order <order file>
+     The file containing the list of the files to parse to look to the
+     $number directive
+
+   --,  --ignore_rest
+     Ignores the rest of the labeled arguments following this flag.
+
+   --version
+     Displays version information and exits.
+
+   -h,  --help
+     Displays usage information and exits.
+
+   All the files being processed (except the files excluded from the
+   processing with the -e switch) are assumed to be in UTF-8 encoding.
+   Example:
+   	smacro -s ..\..\example\source -d ..\..\build\doc_res -v
+   ..\..\example\config -e *.txt,*.png -e *.jpg
+   
+   SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (see
+   https://github.com/vasyutin/smacro).
+
+
+
+
 
 ### Usage
 
@@ -60,8 +123,8 @@ By now I supply solution (.sln) with the project files (.vcproj) files for Visua
 
 The sources are nothing than pure C++ thus the project can be opened in compiled in the newer version of Visual Studio.
 
-### License
+### Лицензия
 GPL
 
-### Author
-Sergey Vasyutin (sergey [at] vasyut.in)
+### Автор
+Сергей Васютин (sergey [at] vasyut.in)
