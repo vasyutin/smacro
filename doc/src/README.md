@@ -4,7 +4,7 @@ ${DO_NOT_EDIT_COMMENT}
 @if LANGUAGE=Ru
 # Макропроцессор SMACRO
 @else
-# Macroprocessor SMACRO
+# SMACRO macroprocessor
 @endif
 
 @//----------------------------------------------------------------------------

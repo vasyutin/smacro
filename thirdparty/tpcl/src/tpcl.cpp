@@ -37,11 +37,11 @@ namespace tpcl {
 // -----------------------------------------------------------------------
 size_t FileNameLength(const TFileNameChar* FileName_)
 {
-#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-	return wcslen(FileName_);
-#else
-	return strlen(FileName_);
-#endif
+	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+		return wcslen(FileName_);
+	#else
+		return strlen(FileName_);
+	#endif
 }
 
 // -----------------------------------------------------------------------
@@ -54,23 +54,23 @@ void AppendSeparatorIfAbsent(TFileNameString& Value_)
 // -----------------------------------------------------------------------
 bool FolderExists(const TFileNameChar *Folder_)
 {
-assert(Folder_);
-#if defined(TPCL_OS_WINDOWS)
-	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-		DWORD Attribs = GetFileAttributesW(Folder_);
+	assert(Folder_);
+	#if defined(TPCL_OS_WINDOWS)
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+			DWORD Attribs = GetFileAttributesW(Folder_);
+		#else
+			DWORD Attribs = GetFileAttributesA(Folder_);
+		#endif
+		if(Attribs == INVALID_FILE_ATTRIBUTES || 
+			!(Attribs & FILE_ATTRIBUTE_DIRECTORY)) {
+			return false;
+			}
+		return true;
 	#else
-		DWORD Attribs = GetFileAttributesA(Folder_);
+		struct stat Stat;
+		if(stat(Folder_, &Stat)) return false;
+		return ((Stat.st_mode & S_IFMT) == S_IFDIR);
 	#endif
-	if(Attribs == INVALID_FILE_ATTRIBUTES || 
-		!(Attribs & FILE_ATTRIBUTE_DIRECTORY)) {
-		return false;
-		}
-	return true;
-#else
-	struct stat Stat;
-	if(stat(Folder_, &Stat)) return false;
-	return ((Stat.st_mode & S_IFMT) == S_IFDIR);
-#endif
 }
 
 // -----------------------------------------------------------------------
@@ -190,71 +190,71 @@ return true;
 // -----------------------------------------------------------------------
 bool FileExists(const TFileNameChar *File_)
 {
-assert(File_);
-#if defined(TPCL_OS_WINDOWS)
-	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-		DWORD Attribs = GetFileAttributesW(File_);
+	assert(File_);
+	#if defined(TPCL_OS_WINDOWS)
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+			DWORD Attribs = GetFileAttributesW(File_);
+		#else
+			DWORD Attribs = GetFileAttributesA(File_);
+		#endif
+		if(Attribs == INVALID_FILE_ATTRIBUTES || (Attribs & FILE_ATTRIBUTE_DIRECTORY)) {
+			return false;
+			}
+		return true;
 	#else
-		DWORD Attribs = GetFileAttributesA(File_);
+		struct stat Stat;
+		if(stat(File_, &Stat)) return false;
+		return ((Stat.st_mode & S_IFMT) != S_IFDIR);
 	#endif
-	if(Attribs == INVALID_FILE_ATTRIBUTES || (Attribs & FILE_ATTRIBUTE_DIRECTORY)) {
-		return false;
-		}
-	return true;
-#else
-	struct stat Stat;
-	if(stat(File_, &Stat)) return false;
-	return ((Stat.st_mode & S_IFMT) != S_IFDIR);
-#endif
 }
 
 // -----------------------------------------------------------------------
 bool RemoveFile(const TFileNameChar *File_)
 {
-assert(File_);
-#if defined(TPCL_OS_WINDOWS)
-	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-		return (DeleteFileW(File_) == TRUE);
+	assert(File_);
+	#if defined(TPCL_OS_WINDOWS)
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+			return (DeleteFileW(File_) == TRUE);
+		#else
+			return (DeleteFileA(File_) == TRUE);
+		#endif
 	#else
-		return (DeleteFileA(File_) == TRUE);
+		return unlink(File_) == 0;
 	#endif
-#else
-	return unlink(File_) == 0;
-#endif
 }
 
 // -----------------------------------------------------------------------
 bool DuplicateFile(const TFileNameChar *Src_, const TFileNameChar *Dst_)
 {
-assert(Src_ && Dst_);
-#if defined(TPCL_OS_WINDOWS)
-	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-		return CopyFileW(Src_, Dst_, TRUE) == TRUE;
+	assert(Src_ && Dst_);
+	#if defined(TPCL_OS_WINDOWS)
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+			return CopyFileW(Src_, Dst_, TRUE) == TRUE;
+		#else
+			return CopyFileA(Src_, Dst_, TRUE) == TRUE;
+		#endif
 	#else
-		return CopyFileA(Src_, Dst_, TRUE) == TRUE;
-	#endif
-#else
-	const mode_t Mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
-	int SourceFile = open(Src_, O_RDONLY);
-	if(SourceFile == -1) return false;
-	int DestFile = open(Dst_, O_CREAT | O_TRUNC | O_WRONLY, Mode);
-	if(DestFile == -1) {
+		const mode_t Mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
+		int SourceFile = open(Src_, O_RDONLY);
+		if(SourceFile == -1) return false;
+		int DestFile = open(Dst_, O_CREAT | O_TRUNC | O_WRONLY, Mode);
+		if(DestFile == -1) {
+			close(SourceFile);
+			return false;
+			}
+		char Buffer[8 * 1024];
+		bool RetValue = true;
+		while(true) {
+			ssize_t BytesRead = read(SourceFile, Buffer, sizeof(Buffer));
+			if(!BytesRead) break; // EOF
+			else if(BytesRead < 0) {RetValue = false; break;}
+			ssize_t BytesWritten = write(DestFile, Buffer, BytesRead);
+			if(BytesWritten != BytesRead) {RetValue = false; break;}
+			}
 		close(SourceFile);
-		return false;
-		}
-	char Buffer[8 * 1024];
-	bool RetValue = true;
-	while(true) {
-		ssize_t BytesRead = read(SourceFile, Buffer, sizeof(Buffer));
-		if(!BytesRead) break; // EOF
-		else if(BytesRead < 0) {RetValue = false; break;}
-		ssize_t BytesWritten = write(DestFile, Buffer, BytesRead);
-		if(BytesWritten != BytesRead) {RetValue = false; break;}
-		}
-	close(SourceFile);
-	close(DestFile);
-	return RetValue;
-#endif
+		close(DestFile);
+		return RetValue;
+	#endif
 }
 
 // -----------------------------------------------------------------------

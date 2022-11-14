@@ -229,7 +229,7 @@ const char *g_UsageMessage =
 	#else
 		"\tsmacro -s ../../example/source -d ../../build/doc_res -v ../../example/config -e *.txt,*.png -e *.jpg\n\n"
 	#endif
-	"SMACRO (Simple MACRO processor). Written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).";
+	"SMACRO (Simple MACRO processor) is written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).";
 
 // -----------------------------------------------------------------------
 bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &Parameters_)
