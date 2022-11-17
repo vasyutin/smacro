@@ -94,14 +94,14 @@ endif
 
 install: $(APP_BIN)
 ifeq ($(OS),Windows_NT)
-	echo Operation is not available in Windows. Copy the file to the directory whose name is in the PATH variable. 
+	@echo Operation is not available in Windows. Copy the file to the directory whose name is in the PATH variable. 
 else
 	install --mode 755 -s -t /usr/bin $(APP_BIN)
 endif
 
 uninstall:
 ifeq ($(OS),Windows_NT)
-	echo Operation is not available in Windows. Remove file manually. 
+	@echo Operation is not available in Windows. Remove file manually. 
 else
 	rm -f /usr/bin/$(APP_BIN_NAME)
 endif
