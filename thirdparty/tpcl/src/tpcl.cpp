@@ -59,6 +59,7 @@ bool FolderExists(const TFileNameChar *Folder_)
 	#endif
 }
 
+#if defined(TPCL_OS_WINDOWS)
 // -----------------------------------------------------------------------
 TFileNameString AbsolutePath(const TFileNameChar *Path_)
 {
@@ -74,6 +75,7 @@ TFileNameString AbsolutePath(const TFileNameChar *Path_)
 	//
 	return TFileNameString(APath, APath + RetValue);
 }
+#endif
 
 // -----------------------------------------------------------------------
 bool CreatePath(const TFileNameChar *Path_)
@@ -243,6 +245,7 @@ bool DuplicateFile(const TFileNameChar *Src_, const TFileNameChar *Dst_)
 	#endif
 }
 
+#if defined(TPCL_OS_WINDOWS)
 // -----------------------------------------------------------------------
 bool Utf8ToWide(const char* UTF8_, int UTF8Size_, std::wstring& String_)
 {
@@ -398,5 +401,7 @@ std::string Utf8ToConsoleString(const char* UTF8_)
 	WideCharToMultiByte(CP_OEMCP, 0, Temp.c_str(), CharsCount, (char*)(RetValue.c_str()), LocalCharsCount, NULL, NULL);
 	return RetValue;
 }
+
+#endif // #if defined(TPCL_OS_WINDOWS)
 
 } // namespace tcpl
