@@ -1,17 +1,21 @@
 #if !defined(V1) || !defined(V3)
 	-OK
+	-OK Fig. $number{fig_first|figures}. Picture name
 #else
 	-Error
+	Fig. $number{fig_first|figures}. Picture name
 #endif
 
 #if !!defined(V1) || !!defined(V3)
 	-OK
 #else
 	-Error
+	Fig. $number{fig_first|figures}. Picture name
 #endif
 
 #if !!!(defined(V1) && defined(V3))
 	-OK
 #else
 	-Error
+	Fig. $number{fig_first|figures}. Picture name
 #endif

@@ -35,7 +35,7 @@
 std::string TProcessor::fileAndLineMessageEnding(const TProcessData &Data_)
 {
 	std::string RetValue;
-	RetValue = ')';
+	RetValue = '(';
 	RetValue +=	tpcl::FileNameToConsoleString(Data_.inputFile());
 	RetValue += ':';
 	RetValue += std::to_string(Data_.lineNo());
@@ -318,7 +318,7 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 		if(*Index != '#') {
 			TResult Res = valuesSubstitution(Data_, Line_);
 			if(TResult::OK != Res) return Res;
-			return autoNumbering(Data_, Line_);
+			return DoProcessing_? autoNumbering(Data_, Line_): TResult::OK;
 		}
 		std::smatch Match;
 		if(std::regex_search(Index, Line_.cend(), Match, m_CommentOperatorRegExp) && !Match.position()) {
