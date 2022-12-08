@@ -53,13 +53,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(ProjectDir)\..\..\build\$(PlatformName)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\..\..\build\$(PlatformName)\$(Configuration)\obj\</IntDir>
+    <OutDir>$(ProjectDir)..\..\build\$(PlatformName)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\build\$(PlatformName)\$(Configuration)\obj\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(ProjectDir)\..\..\build\$(PlatformName)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\..\..\build\$(PlatformName)\$(Configuration)\obj\</IntDir>
+    <OutDir>$(ProjectDir)..\..\build\$(PlatformName)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\build\$(PlatformName)\$(Configuration)\obj\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -79,7 +79,7 @@
       </AdditionalLibraryDirectories>
     </Link>
     <BuildLog>
-      <Path>$(SolutionDir)\..\..\..\build\$(PlatformName)\$(Configuration)\obj\$(ProjectName)\$(ProjectName).log</Path>
+      <Path>$(IntDir)$(ProjectName).log</Path>
     </BuildLog>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -104,7 +104,7 @@
       </AdditionalLibraryDirectories>
     </Link>
     <BuildLog>
-      <Path>$(SolutionDir)\..\..\..\build\$(PlatformName)\$(Configuration)\obj\$(ProjectName)\$(ProjectName).log</Path>
+      <Path>$(IntDir)$(ProjectName).log</Path>
     </BuildLog>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
