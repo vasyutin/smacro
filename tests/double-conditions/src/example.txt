@@ -1,0 +1,17 @@
+#if !defined(V1) || !defined(V3)
+	-OK
+#else
+	-Error
+#endif
+
+#if !!defined(V1) || !!defined(V3)
+	-OK
+#else
+	-Error
+#endif
+
+#if !!!(defined(V1) && defined(V3))
+	-OK
+#else
+	-Error
+#endif

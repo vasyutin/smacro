@@ -736,7 +736,11 @@ bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, TProcessD
 			for(auto it = Values_.begin(); it != Values_.end();) {
 				if(it->Type == TValueType::String || it->Type == TValueType::Bool) {
 					Result.push_back(*it);
+					while(!Stack.empty() && Stack.top().Type == TValueType::Not) {
+						Result.push_back(Stack.top());
+						Stack.pop();
 					}
+				}
 				else if(it->Type == TValueType::Not || it->Type == TValueType::OpenBracket) {
 					Stack.push(*it);
 					}
@@ -798,7 +802,7 @@ bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, TProcessD
 				Stream_ << "'" << Value_.StringValue << "'";
 				break;
 			case TValueType::Bool:
-				Stream_ << (Value_.BoolValue? "true':'false");
+				Stream_ << (Value_.BoolValue? "true": "false");
 				break;
 			case TValueType::Not:
 				Stream_ << "!";
@@ -992,7 +996,7 @@ bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, TProcessD
 		}
 
 	#if defined(DEBUG_OUTPUT)
-		std::cout << "Result: " << (Result_? "true':'false") << "\n";
+		std::cout << "Result: " << (Result_? "true": "false") << "\n";
 	#endif
 
 	return true;
