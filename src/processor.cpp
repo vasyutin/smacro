@@ -49,7 +49,7 @@ TProcessor::TProcessor(const TParameters &Parameters_, TMode Mode_):
 	m_Variables(Parameters_.Variables),
 	m_ExcludePatterns(Parameters_.ExcludePatterns),
 	m_IgnorePatterns(Parameters_.IgnorePatterns),
-	m_VariableRegExp("[$][{]([A-Za-z0-9_]+)[}]"),
+	m_VariableRegExp("[$][{]\\s*([A-Za-z0-9_]+)\\s*[}]"),
 	m_IfRegExp(Parameters_.AlternativeOperatorPrefix? "@if\\s+": "#if\\s+"), 
 	m_ElifRegExp(Parameters_.AlternativeOperatorPrefix? "@elif\\s+": "#elif\\s+"), 
 	m_ElseRegExp(Parameters_.AlternativeOperatorPrefix? "@else": "#else"),
@@ -58,7 +58,9 @@ TProcessor::TProcessor(const TParameters &Parameters_, TMode Mode_):
 	m_CommentRegExp("[/][/]"),
 	m_IncludeRegExp(Parameters_.AlternativeOperatorPrefix? "@include\\s*[<]([^>]*)[>]": "#include\\s*[<]([^>]*)[>]"),
 	m_NumberRegExp("[$]number[{]\\s*([^{}|\\s]+)\\s*[|]\\s*([^{}|\\s]+)\\s*[}]"), 
-	m_ReferenceRegExp("[$]ref[{]\\s*([^{}|\\s]+)\\s*[}]")
+	m_ReferenceRegExp("[$]ref[{]\\s*([^{}|\\s]+)\\s*[}]"),
+	m_NameRegExp("[$]name[{]\\s*([^{}|\\s]+)\\s*[|]"), 
+	m_NamedRegExp("[$]named[{]\\s*([^{}|\\s]+)\\s*[}]")
 {
 	m_LexemeRegExps.push_back(TLexemeRegExp());
 	m_LexemeRegExps.back().Type = TLexemeType::String;
@@ -287,6 +289,78 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 }
 
 // -----------------------------------------------------------------------
+TProcessor::TResult TProcessor::namesSubstitution(TProcessData& Data_, std::string& Line_) 
+{
+	if(Line_.empty()) return TResult::OK;
+
+	size_t StartPos = 0;
+	std::cmatch Match;
+	while(std::regex_search(Line_.c_str() + StartPos, Match, m_NameRegExp)) {
+		std::string Name(Match[1].first, Match[1].second);
+
+		int Braces = 1;
+		const char *ValueBegin = Match[0].second;
+		const char *ValueEnd = ValueBegin;
+		for(; *ValueEnd; ++ValueEnd) {
+			if('{' == *ValueEnd) Braces++;
+			if('}' == *ValueEnd) {
+				Braces--;
+				if(!Braces) break;
+			}
+		}
+		if(Braces) {
+			Data_.ErrorMessage << "Unexpected end of line in operator $name " << fileAndLineMessageEnding(Data_);
+			return TResult::SyntaxError;
+		}
+		std::string Value(ValueBegin, ValueEnd);
+		if(Value.empty()) {
+			Data_.ErrorMessage << "Empty value in operator $name " << fileAndLineMessageEnding(Data_);
+			return TResult::SyntaxError;
+		}
+		ValueEnd++;
+		//
+		auto NameIt = m_NamedStrings.find(Name);
+		if(mode() == TMode::Collecting) {
+			if(NameIt != m_NamedStrings.end()) {
+				Data_.ErrorMessage << "Names '" << tpcl::Utf8ToConsoleString(Name) << "' is defined for the second time " << fileAndLineMessageEnding(Data_);
+				return TResult::SyntaxError;
+			}
+			m_NamedStrings.emplace(Name, Value);
+			StartPos = ValueEnd - Line_.c_str();
+		}
+		else {
+			if(NameIt == m_NamedStrings.end()) {
+				Data_.ErrorMessage << "Name '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
+				return TResult::SyntaxError;
+			}
+			size_t ReplaceStartPos = Match[0].first - Line_.c_str();
+			Line_.replace(ReplaceStartPos, ValueEnd - Match[0].first, NameIt->second);
+			StartPos = ReplaceStartPos + NameIt->second.size();
+		}
+	}
+
+	// ---
+	if(mode() == TMode::Processing) {
+		size_t StartPos = 0;
+		while(std::regex_search(Line_.c_str() + StartPos, Match, m_NamedRegExp)) {
+			std::string Name(Match[1].first, Match[1].second);
+			TrimString(Name);
+			//
+			auto NameIt = m_NamedStrings.find(Name);
+			if(NameIt == m_NamedStrings.end()) {
+				Data_.ErrorMessage << "Name '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
+				return TResult::SyntaxError;
+			}
+			size_t ReplaceStartPos = Match[0].first - Line_.c_str();
+			Line_.replace(ReplaceStartPos, Match[0].second - Match[0].first, NameIt->second);
+			StartPos = ReplaceStartPos + NameIt->second.size();
+		}
+	}
+
+	return TResult::OK;
+}
+
+// -----------------------------------------------------------------------
 std::string::const_iterator TProcessor::firstNonSpace(std::string::const_iterator Begin_, std::string::const_iterator End_)
 {
 return std::find_if_not(Begin_, End_, [](std::string::value_type Ch_) {return Ch_ < 0? false: std::isspace(Ch_);});
@@ -318,7 +392,14 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 		if(*Index != '#') {
 			TResult Res = valuesSubstitution(Data_, Line_);
 			if(TResult::OK != Res) return Res;
-			return DoProcessing_? autoNumbering(Data_, Line_): TResult::OK;
+			if(DoProcessing_) {
+				if(TResult::OK != (Res = namesSubstitution(Data_, Line_)))
+					return Res;
+				return autoNumbering(Data_, Line_);
+			}
+			else {
+				return TResult::OK;
+			}
 		}
 		std::smatch Match;
 		if(std::regex_search(Index, Line_.cend(), Match, m_CommentOperatorRegExp) && !Match.position()) {
@@ -327,7 +408,7 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 		// Substitute values
 		if(DoProcessing_) {
 			TResult Res = valuesSubstitution(Data_, Line_);
-			if(TResult::OK != Res || TResult::OK != (Res = autoNumbering(Data_, Line_))) 
+			if(TResult::OK != Res || TResult::OK != (Res = namesSubstitution(Data_, Line_)) || TResult::OK != (Res = autoNumbering(Data_, Line_))) 
 				return Res;
 
 			// Include directive

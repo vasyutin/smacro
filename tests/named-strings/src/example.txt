@@ -1,0 +1,7 @@
+$name{title_1 | This is the title 1}
+
+The text "$named{title_1}"
+
+$name{number_1 | $number{first|numbers}}. Title 1
+
+The link to part $named{number_1}.

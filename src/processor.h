@@ -86,16 +86,22 @@ private:
 	std::unordered_map<std::string, unsigned> m_NumbersGenerator;
 	std::unordered_map<std::string, unsigned> m_Number;
 
+	// Named Strings
+	std::unordered_map<std::string, std::string> m_NamedStrings;
+
 	// DoProcessing - process variables substitution and files inclusion
 	TResult readNextLine(TProcessData& Data_, std::string& Line_, bool DoProcessing_);
 	TResult processOperator(TProcessData& Data_, std::string& Line_, bool Skip_);
 	static bool isOperator(TResult Result_);
 	TResult valuesSubstitution(TProcessData& Data_, std::string& Line_);
 	TResult autoNumbering(TProcessData& Data_, std::string& Line_);
+	TResult namesSubstitution(TProcessData& Data_, std::string& Line_);
+
 	TResult processLinesTillNextKeyword(TProcessData& Data_, std::string& Line_, bool Skip_);
 
 	std::regex m_VariableRegExp, m_IfRegExp, m_ElifRegExp, m_ElseRegExp, m_EndifRegExp,
-		m_CommentOperatorRegExp, m_CommentRegExp, m_IncludeRegExp, m_NumberRegExp, m_ReferenceRegExp;
+		m_CommentOperatorRegExp, m_CommentRegExp, m_IncludeRegExp, m_NumberRegExp, m_ReferenceRegExp,
+		m_NameRegExp, m_NamedRegExp;
 
 	enum class TLexemeType {
 		String,
