@@ -4,9 +4,6 @@
     <Filter Include="src">
       <UniqueIdentifier>{5de49061-fc27-4ef5-bb6d-1ee8ee60b3b0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\tpcl">
-      <UniqueIdentifier>{657ddde8-37da-4080-b58c-b0c54c40edca}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\main.cpp">
@@ -14,9 +11,6 @@
     </ClCompile>
     <ClCompile Include="..\..\src\processor.cpp">
       <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\thirdparty\tpcl\src\tpcl.cpp">
-      <Filter>src\tpcl</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

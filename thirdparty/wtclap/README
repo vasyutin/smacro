@@ -1,0 +1,15 @@
+WTCLAP - Wide Templatized Command Line Argument Parser
+(https://github.com/vasyutin/wtclap)
+
+This is a simple C++ library that facilitates parsing command line
+arguments in a type independent manner.
+
+Based on TCLAP 1.4 (Templatized Command Line Argument Parser, 
+see https://sourceforge.net/projects/tclap/) but is made for unicode 
+strings (std::wstring) widely used in Windows programming.
+
+See ./docs/manual.html and ./examples/src for the details.
+
+You can even use TCLAP and WTCLAP together in platform independent 
+code. See ./examples/wtclap-and-tclap-together/src for the 
+details.

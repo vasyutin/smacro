@@ -20,13 +20,14 @@
 
 #include <tpcl.h>
 
+#include <filesystem>
 #include <vector>
 #include <regex>
 #include <unordered_map>
 
 typedef std::unordered_map<std::string, std::string> TVariables;
 
-#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+#ifdef TPCL_OS_WINDOWS
 	typedef std::vector<std::wregex> TExcludePatterns;
 #else
 	typedef std::vector<std::regex> TExcludePatterns;
@@ -34,10 +35,10 @@ typedef std::unordered_map<std::string, std::string> TVariables;
 
 // -----------------------------------------------------------------------
 struct TParameters {
-	tpcl::TFileNameString InputFolder;
-	tpcl::TFileNameString OutputFolder;
+	std::filesystem::path InputFolder;
+	std::filesystem::path OutputFolder;
 	TVariables Variables;
 	TExcludePatterns ExcludePatterns, IgnorePatterns;
-	std::vector<tpcl::TFileNameString> OrderedFileList;
+	std::vector<std::filesystem::path> OrderedFileList;
 	bool AlternativeOperatorPrefix;
 	};

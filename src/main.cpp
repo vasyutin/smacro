@@ -20,7 +20,15 @@
 #include <processor.h>
 #include <utils.h>
 
-#include <tclap/CmdLine.h>
+#define FMT_HEADER_ONLY
+#include <fmt/core.h>
+
+#ifdef TPCL_OS_WINDOWS
+	#include <wtclap/CmdLine.h>
+#else
+	#include <tclap/CmdLine.h>
+	#define TCLAP_STR(S_) S_
+#endif
 
 #include <iostream>
 #include <vector>
@@ -64,7 +72,7 @@ bool ParseVariables(const tpcl::TFileNameChar *FileName_, TParameters &Parameter
 	// ---
 	std::ifstream File(FileName_);
 	if(!File) {
-		std::cerr << "Can't open file '" << tpcl::FileNameToConsoleString(FileName_) << "'." << std::endl;
+		fmt::print("Can't open file '{}'." << tpcl::FileNameToConsoleString(FileName_) << "'." << std::endl;
 		return false;
 	}
 	//
@@ -221,52 +229,47 @@ bool ParseFileList(const tpcl::TFileNameChar *FileName_, std::vector<tpcl::TFile
 }
 
 // -----------------------------------------------------------------------
-const char *g_UsageMessage = 
-	"All the files being processed (except the files excluded from the processing with the -e switch) are assumed to be in UTF-8 encoding.\n"
-	"Example:\n"
+const tpcl::TFileNameChar *g_UsageMessage = 
+	TCLAP_STR("All the files being processed (except the files excluded from the processing with the -e switch) are assumed to be in UTF-8 encoding.\n")
+	TCLAP_STR("Example:\n")
 	#if defined(TPCL_OS_WINDOWS)
-		"\tsmacro -s ..\\..\\example\\source -d ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png -e *.jpg\n\n"
+		TCLAP_STR("\tsmacro -s ..\\..\\example\\source -d ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png -e *.jpg\n\n")
 	#else
 		"\tsmacro -s ../../example/source -d ../../build/doc_res -v ../../example/config -e *.txt,*.png -e *.jpg\n\n"
 	#endif
-	"SMACRO (Simple MACRO processor) is written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).";
+	TCLAP_STR("SMACRO (Simple MACRO processor) is written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).");
 
 // -----------------------------------------------------------------------
 bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &Parameters_)
 {
-	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-		std::vector<const char*> ArgvPtrs(Argc_);
-		std::vector<std::string> ArgvStrings(Argc_);
-		for(int i = 0; i < Argc_; ++i) {
-			tpcl::WideToUtf8(Argv_[i], -1, ArgvStrings[i]);
-			ArgvPtrs[i] = ArgvStrings[i].c_str();
-			}
-		const char **ArgvUtf8_ = &ArgvPtrs[0];
-	#endif
-
-	TCLAP::CmdLine CmdParser(g_UsageMessage, ' ', "2.0");
-	TCLAP::ValueArg<std::string> InputFolder("s", "source", "The folder, containing documentation files to process", true, std::string(), "source folder", CmdParser);
-	TCLAP::ValueArg<std::string> OutputFolder("d", "destination", "The destination folder for the processed files", true, std::string(), "destination folder", CmdParser);
-	TCLAP::ValueArg<std::string> VariablesFile("v", "variables", "The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8).", 
-		true, std::string(), "variables file", CmdParser);
-	TCLAP::MultiArg<std::string> ExcludeMasks("e", "exclude",
-		"The mask of filename to exclude from processing. This files are only copied to the output folder.", false, "exclude masks", CmdParser);
-	TCLAP::MultiArg<std::string> IgnoreMasks("i", "ignore",
-		"The mask of filename to ignore. This files are not copied to the output folder.", false, "ignore masks", CmdParser);
-	TCLAP::ValueArg<std::string> OrderFile("o", "order", "The file containing the list of the files to parse to look to the $number directive in required order", false, std::string(), 
-		"order file", CmdParser);
-	TCLAP::SwitchArg AtPrefixed("@", "at-prefixed", "Use symbol '@' instead of '#' as the prefix for the control operators (@//, @if, @elif, @else, @endif and @include "
-		"instead of #//, #if, #elif, #else, #endif and #include) in text with plenty of '#' (ex. in Markdown)", CmdParser, false);
+	TCLAP::CmdLine CmdParser(g_UsageMessage, TCLAP_STR(' '), TCLAP_STR("2.1"));
+	TCLAP::ValueArg<tpcl::TFileNameString> InputFolder(TCLAP_STR("s"), TCLAP_STR("source"), 
+		TCLAP_STR("The folder, containing documentation files to process"), true, tpcl::TFileNameString(), 
+		TCLAP_STR("source folder"), CmdParser);
+	TCLAP::ValueArg<tpcl::TFileNameString> OutputFolder(TCLAP_STR("d"), TCLAP_STR("destination"), 
+		TCLAP_STR("The destination folder for the processed files"), true, tpcl::TFileNameString(), 
+		TCLAP_STR("destination folder"), CmdParser);
+	TCLAP::ValueArg<tpcl::TFileNameString> VariablesFile(TCLAP_STR("v"), TCLAP_STR("variables"), 
+		TCLAP_STR("The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8)."), 
+		true, tpcl::TFileNameString(), TCLAP_STR("variables file"), CmdParser);
+	TCLAP::MultiArg<tpcl::TFileNameString> ExcludeMasks(TCLAP_STR("e"), TCLAP_STR("exclude"),
+		TCLAP_STR("The mask of filename to exclude from processing. This files are only copied to the output folder."), 
+		false, TCLAP_STR("exclude masks"), CmdParser);
+	TCLAP::MultiArg<tpcl::TFileNameString> IgnoreMasks(TCLAP_STR("i"), TCLAP_STR("ignore"),
+		TCLAP_STR("The mask of filename to ignore. This files are not copied to the output folder."), 
+		false, TCLAP_STR("ignore masks"), CmdParser);
+	TCLAP::ValueArg<tpcl::TFileNameString> OrderFile(TCLAP_STR("o"), TCLAP_STR("order"), 
+		TCLAP_STR("The file containing the list of the files to parse to look to the $number directive in required order"), 
+		false, tpcl::TFileNameString(), TCLAP_STR("order file"), CmdParser);
+	TCLAP::SwitchArg AtPrefixed(TCLAP_STR("@"), TCLAP_STR("at-prefixed"), 
+		TCLAP_STR("Use symbol '@' instead of '#' as the prefix for the control operators (@//, @if, @elif, @else, @endif and @include ")
+		TCLAP_STR("instead of #//, #if, #elif, #else, #endif and #include) in text with plenty of '#' (ex. in Markdown)"), CmdParser, false);
 
 	try {
-		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-			CmdParser.parse(Argc_, ArgvUtf8_);
-		#else
-			CmdParser.parse(Argc_, Argv_);
-		#endif
+		CmdParser.parse(Argc_, Argv_);
 	}
 	catch (const TCLAP::ArgException& Exeption_) {
-		std::cerr << "error: " << Exeption_.error() << " for arg " << Exeption_.argId() << std::endl;
+		fmt::print(stderr, "Error: {} for arg {}.\n", tpcl::FileNameToUtf8(Exeption_.error()), tpcl::FileNameToUtf8(Exeption_.argId()));
 		return false;
 	}
 
@@ -285,9 +288,6 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 			if(!ParseFileList(OrderFile.getValue().c_str(), Parameters_.OrderedFileList)) return false;
 		}
 	#endif
-
-	tpcl::AppendSeparatorIfAbsent(Parameters_.InputFolder);
-	tpcl::AppendSeparatorIfAbsent(Parameters_.OutputFolder);
 
 	if(ExcludeMasks.isSet() && !ParseMasks(ExcludeMasks.getValue(), Parameters_.ExcludePatterns)) {
 		std::cerr << "Error specifying exclude mask." << std::endl;
@@ -376,12 +376,10 @@ bool ProcessList(const std::vector<tpcl::TFileNameString> &OrderedList_, TProces
 // Gets the file with the values of variables and processes the documentation's
 // files according to the values of the variables.
 // -----------------------------------------------------------------------
-#if defined(TPCL_MINGW)
-	int main(int Argc_, char *Argv_[]) // Local 8
-#elif defined(TPCL_MSC)
-	int wmain(int Argc_, wchar_t *Argv_[]) // wchar_t
+#ifdef TPCL_OS_WINDOWS
+	int wmain(int Argc_, wchar_t *Argv_[])
 #else
-	int main(int Argc_, char *Argv_[]) // utf 8
+	int main(int Argc_, char *Argv_[])
 #endif
 {
 	TParameters Parameters;
@@ -393,15 +391,8 @@ bool ProcessList(const std::vector<tpcl::TFileNameString> &OrderedList_, TProces
 	// Add SMACRO_ROOT var
 	std::string SmacroRoot("SMACRO_ROOT");
 	if(Parameters.Variables.find(SmacroRoot) == Parameters.Variables.end()) {
-		#if defined(TPCL_OS_WINDOWS)
-			#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-				Parameters.Variables[SmacroRoot] = tpcl::WideToUtf8String(Parameters.InputFolder);
-			#else
-				Parameters.Variables[SmacroRoot] = tpcl::LocalToUtf8String(Parameters.InputFolder);
-			#endif
-		#else
-			Parameters.Variables[SmacroRoot] = Parameters.InputFolder;
-		#endif
+		?? \ or /
+		Parameters.Variables[SmacroRoot] = tpcl::FileNameToUtf8(Parameters.InputFolder.c_str());
 	}
 
 	TProcessor Processor(Parameters, TProcessor::TMode::Collecting);
