@@ -4,7 +4,7 @@
 CC=gcc
 CXX=g++
 
-INCLUDES=-I../../src -I../../thirdparty/tclap/include -I../../thirdparty/tpcl/src
+INCLUDES=-I../../src -I../../thirdparty/tclap/include -I../../thirdparty/tpcl/include -I../../thirdparty/wtclap/include -I../../thirdparty/fmt/include
 LDLIBS=-static
 LDFLAGS=
 
@@ -31,7 +31,11 @@ OBJ_DIR=$(BIN_DIR)/obj
 OBJ_DIR_TPCL=$(BIN_DIR)/obj/tpcl
 
 CFLAGS=$(OPTIMIZE) $(INCLUDES) -Wall -Wextra -MMD
-CXXFLAGS=-std=c++14 $(OPTIMIZE) $(INCLUDES) -Wall -Wextra -Wno-psabi -MMD
+CXXFLAGS=-std=c++17 $(OPTIMIZE) $(INCLUDES) -Wall -Wextra -Wno-psabi -MMD
+
+ifeq ($(OS),Windows_NT)
+	LDFLAGS+=-municode  
+endif
 
 ifeq ($(OS),Windows_NT)
 	MKDIR_BIN=@if not exist "$(BIN_DIR)" mkdir "$(BIN_DIR)" 2> nul
@@ -57,20 +61,13 @@ APP_SRCS=../../src/main.cpp \
 	../../src/processor.cpp
 APP_OBJS=$(subst ../../src/,$(OBJ_DIR)/,$(subst .cpp,.o,$(APP_SRCS)))
 
-TPCL_SRCS=../../thirdparty/tpcl/src/tpcl.cpp
-TPCL_OBJS=$(subst ../../thirdparty/tpcl/src/,$(OBJ_DIR)/tpcl/,$(subst .cpp,.o,$(TPCL_SRCS)))
-
 $(OBJ_DIR)/%.o: ../../src/%.cpp
 	$(MKDIR_OBJ)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/tpcl/%.o: ../../thirdparty/tpcl/src/%.cpp
-	$(MKDIR_OBJ_TPCL)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(APP_BIN): $(APP_OBJS) $(TPCL_OBJS)
+$(APP_BIN): $(APP_OBJS)
 	$(MKDIR_BIN)
-	$(CXX) $(LDFLAGS) -o $(APP_BIN) $(LDLIBS) $(APP_OBJS) $(TPCL_OBJS)
+	$(CXX) $(LDFLAGS) -o $(APP_BIN) $(LDLIBS) $(APP_OBJS)
 ifneq ($(debug), true)
 	strip $(APP_BIN)
 endif
@@ -80,7 +77,7 @@ app-binary: $(APP_BIN)
 #-----------------------------------------------------------------
 # Dependencies (recompile when headers have changed)
 #-----------------------------------------------------------------
-DEPENDENCIES=$(APP_OBJS:%.o=%.d) $(TPCL_OBJS:%.o=%.d)
+DEPENDENCIES=$(APP_OBJS:%.o=%.d)
 
 -include $(DEPENDENCIES)
 

@@ -21,6 +21,7 @@
 
 #include <tpcl-base.h>
 #include <string>
+#include <cstring>
 #include <vector>
 
 namespace tpcl {

@@ -38,11 +38,11 @@ public:
 	bool processFile(const std::filesystem::path& Input_, const std::filesystem::path& Output_);
 	// ---
 	bool isExcluded(const std::filesystem::path& FileName_) const {
-		return matchesPatterns(FileName_, m_ExcludePatterns);
+		return matchesPatterns(FileName_.native(), m_ExcludePatterns);
 	}
 	// ---
 	bool isIgnored(const std::filesystem::path& FileName_) const {
-		return matchesPatterns(FileName_, m_IgnorePatterns);
+		return matchesPatterns(FileName_.native(), m_IgnorePatterns);
 	}
 
 private:

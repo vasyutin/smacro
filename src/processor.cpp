@@ -20,6 +20,9 @@
 #include <utils.h>
 #include <string-stream.h>
 
+#define FMT_HEADER_ONLY
+#include <fmt/core.h>
+
 #include <iostream>
 #include <cctype>
 
@@ -34,13 +37,7 @@
 // -----------------------------------------------------------------------
 std::string TProcessor::fileAndLineMessageEnding(const TProcessData &Data_)
 {
-	std::string RetValue;
-	RetValue = '(';
-	RetValue +=	tpcl::FileNameToConsoleString(Data_.inputFile());
-	RetValue += ':';
-	RetValue += std::to_string(Data_.lineNo());
-	RetValue += ").";
-	return RetValue;
+	return fmt::format("({}: {}).", Data_.inputFile().u8string(), Data_.lineNo());
 }
 
 // -----------------------------------------------------------------------
@@ -136,17 +133,15 @@ bool TProcessor::isOperator(TResult Result_)
 }
 
 // -----------------------------------------------------------------------
-TProcessor::TProcessData::TProcessData(const tpcl::TFileNameString &InputFile_, const tpcl::TFileNameString &OutputFile_, TMode Mode_):
+TProcessor::TProcessData::TProcessData(const std::filesystem::path &InputFile_, const std::filesystem::path &OutputFile_, TMode Mode_):
 	OutputFile(OutputFile_),
 	Mode(Mode_)
 {
 	assert(Input.empty());
 	std::unique_ptr<std::ifstream> Stream(new std::ifstream);
-	Stream->open(InputFile_, std::ios::binary);
+	Stream->open(InputFile_.c_str(), std::ios::binary);
 	if(!(*Stream)) {
-		ErrorMessage = "Can't open input file '";
-		ErrorMessage += tpcl::FileNameToConsoleString(InputFile_);
-		ErrorMessage += "'.";
+		ErrorMessage = fmt::format("Can't open input file '{}'.\n", InputFile_.u8string());
 		return;
 	}
 	Input.push_back(std::move(Stream));
@@ -156,9 +151,7 @@ TProcessor::TProcessData::TProcessData(const tpcl::TFileNameString &InputFile_, 
 	if(Mode_ == TMode::Processing) {
 		Output.open(OutputFile_, std::ios::binary);
 		if(!Output) {
-			ErrorMessage = "Can't open output file '";
-			ErrorMessage += tpcl::FileNameToConsoleString(OutputFile_);
-			ErrorMessage += "'.";
+			ErrorMessage = fmt::format("Can't open output file '{}'.\n", OutputFile_.u8string());
 			return;
 		}
 	}
@@ -171,7 +164,7 @@ bool TProcessor::TProcessData::initialized() const
 }
 
 // -----------------------------------------------------------------------
-bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TFileNameString &Output_)
+bool TProcessor::processFile(const std::filesystem::path &Input_, const std::filesystem::path &Output_)
 {
 	TProcessData Data(Input_, Output_, mode());
 	if(!Data.initialized()) {
@@ -189,17 +182,17 @@ bool TProcessor::processFile(const tpcl::TFileNameString &Input_, const tpcl::TF
 
 		// There can be only #if
 		if(Result != TResult::OperatorIf) {
-			std::cerr << "Expected #if " << fileAndLineMessageEnding(Data) << std::endl;
+			fmt::print(stderr, "Expected #if {}\n", fileAndLineMessageEnding(Data));
 			return false;
 		}
 		//
 		Result = processOperator(Data, Line, false);
 		if(Result == TResult::WriteError) {
-			std::cerr << "Can't write file '" << tpcl::FileNameToConsoleString(Output_) << "'." << std::endl;
+			fmt::print(stderr, "Can't write file '{}'\n", Output_.u8string());
 			return false;
 		}
 		else if(Result != TResult::OK) {
-			std::cerr << Data.errorMessage() << std::endl;
+			fmt::print(stderr, "{}\n", Data.errorMessage());
 			return false;
 		}
 	}
@@ -216,7 +209,7 @@ TProcessor::TResult TProcessor::valuesSubstitution(TProcessData& Data_, std::str
 			std::string Variable(Match[1].first, Match[1].second);
 			TVariables::const_iterator it = m_Variables.find(Variable);
 			if(it == m_Variables.end()) {
-				Data_.ErrorMessage << "Variable '" << tpcl::Utf8ToConsoleString(Variable) << "' is not defined " << fileAndLineMessageEnding(Data_);
+				Data_.ErrorMessage << "Variable '" << Variable << "' is not defined " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			else {
@@ -243,7 +236,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 			std::string Class(Match[2].first, Match[2].second);
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt != m_Number.end()) {
-				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' is defined for the second time " << fileAndLineMessageEnding(Data_);
+				Data_.ErrorMessage << "Number's label '" << Name << "' is defined for the second time " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			auto ClassIt = m_NumbersGenerator.find(Class);
@@ -257,7 +250,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 		else {
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt == m_Number.end()) {
-				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
+				Data_.ErrorMessage << "Number's label '" << Name << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			std::string NumberString(std::to_string(NumberIt->second));
@@ -275,7 +268,7 @@ TProcessor::TResult TProcessor::autoNumbering(TProcessData& Data_, std::string& 
 			//
 			auto NumberIt = m_Number.find(Name);
 			if(NumberIt == m_Number.end()) {
-				Data_.ErrorMessage << "Number's label '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
+				Data_.ErrorMessage << "Number's label '" << Name << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			std::string NumberString(std::to_string(NumberIt->second));
@@ -322,7 +315,7 @@ TProcessor::TResult TProcessor::namesSubstitution(TProcessData& Data_, std::stri
 		auto NameIt = m_NamedStrings.find(Name);
 		if(mode() == TMode::Collecting) {
 			if(NameIt != m_NamedStrings.end()) {
-				Data_.ErrorMessage << "Names '" << tpcl::Utf8ToConsoleString(Name) << "' is defined for the second time " << fileAndLineMessageEnding(Data_);
+				Data_.ErrorMessage << "Names '" << Name << "' is defined for the second time " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			m_NamedStrings.emplace(Name, Value);
@@ -330,7 +323,7 @@ TProcessor::TResult TProcessor::namesSubstitution(TProcessData& Data_, std::stri
 		}
 		else {
 			if(NameIt == m_NamedStrings.end()) {
-				Data_.ErrorMessage << "Name '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
+				Data_.ErrorMessage << "Name '" << Name << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			size_t ReplaceStartPos = Match[0].first - Line_.c_str();
@@ -348,7 +341,7 @@ TProcessor::TResult TProcessor::namesSubstitution(TProcessData& Data_, std::stri
 			//
 			auto NameIt = m_NamedStrings.find(Name);
 			if(NameIt == m_NamedStrings.end()) {
-				Data_.ErrorMessage << "Name '" << tpcl::Utf8ToConsoleString(Name) << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
+				Data_.ErrorMessage << "Name '" << Name << "' was not seen during the first run " << fileAndLineMessageEnding(Data_);
 				return TResult::SyntaxError;
 			}
 			size_t ReplaceStartPos = Match[0].first - Line_.c_str();
@@ -416,15 +409,7 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 				if(!Match[1].length()) return TResult::SyntaxError;
 
 				std::unique_ptr<std::ifstream> Stream(new std::ifstream);
-				#if defined(TPCL_OS_WINDOWS)
-					#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-						tpcl::TFileNameString FileName(tpcl::Utf8ToWideString(std::string(Match[1].first, Match[1].second)));
-					#else
-						tpcl::TFileNameString FileName(tpcl::Utf8ToLocalString(std::string(Match[1].first, Match[1].second)));
-					#endif
-				#else
-					std::string FileName(Match[1].first, Match[1].second);
-				#endif
+				tpcl::TFileNameString FileName(tpcl::Utf8ToFileName(std::string(Match[1].first, Match[1].second)));
 				// Преобразовывем разделители к системным
 				for(auto it = FileName.begin(); it != FileName.end(); ++it) {
 					#if defined(TPCL_OS_WINDOWS)
@@ -446,10 +431,9 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 						}
 					}
 				}
-
-				Stream->open(FileName, std::ios::binary);
+				Stream->open(std::filesystem::path(FileName), std::ios::binary);
 				if(!(*Stream)) {
-					Data_.ErrorMessage << "Can't include file '" << tpcl::FileNameToConsoleString(FileName) << "' " << fileAndLineMessageEnding(Data_);
+					Data_.ErrorMessage << "Can't include file '" << tpcl::FileNameToUtf8(FileName) << "' " << fileAndLineMessageEnding(Data_);
 					return TResult::SyntaxError;
 				}
 				Data_.Input.push_back(std::move(Stream));
@@ -739,7 +723,7 @@ bool TProcessor::calculateExp(const std::string &Line_, bool &Result_, TProcessD
 				case TLexemeType::Variable: {
 					TVariables::const_iterator iVar = This_.m_Variables.find(it->Value);
 					if(iVar == This_.m_Variables.end()) {
-						Data_.ErrorMessage << "Undefined variable '" << tpcl::Utf8ToConsoleString(it->Value) << "' " << fileAndLineMessageEnding(Data_);
+						Data_.ErrorMessage << "Undefined variable '" << it->Value << "' " << fileAndLineMessageEnding(Data_);
 						return false;
 					}
 					Value.Type = TValueType::String;

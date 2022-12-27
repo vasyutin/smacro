@@ -307,13 +307,22 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 // -----------------------------------------------------------------------
 bool ProcessFolder(const std::filesystem::path &Input_, const std::filesystem::path &Output_, TProcessor &Processor_)
 {
+	struct TPathComparator {
+		std::locale Locale;
+		//
+		TPathComparator(): Locale(std::locale()) {}
+		//
+		bool operator()(const std::filesystem::path &Left_, const std::filesystem::path &Right_) {
+			return Locale(Left_.native(), Right_.native());
+		}
+	};
+
 	if(!(std::filesystem::exists(Input_) && std::filesystem::is_directory(Input_))) {
 		fmt::print(stderr, "Error accessing folder '{}'.", Input_.u8string());
 		return false;
 	}
 
 	if(Processor_.mode() == TProcessor::TMode::Processing) {
-
 		if(!std::filesystem::exists(Output_)) {
 			if(!std::filesystem::create_directories(Output_)) {
 				fmt::print(stderr, "Can't create folder '{}'.", Output_.u8string());
@@ -329,25 +338,27 @@ bool ProcessFolder(const std::filesystem::path &Input_, const std::filesystem::p
 		else
 			Files.emplace_back(Entry.path().filename());
 	}
-	std::sort(Folders.begin(), Folders.end(), std::locale());
-	std::sort(Files.begin(), Files.end(), std::locale());
+
+	TPathComparator PathComparator;
+	std::sort(Folders.begin(), Folders.end(), PathComparator);
+	std::sort(Files.begin(), Files.end(), PathComparator);
 
 	for(auto it = Files.begin(); it != Files.end(); ++it) {
 		std::filesystem::path InputFile(Input_ / *it), OutputFile(Output_ / *it);
 		if(Processor_.mode() == TProcessor::TMode::Processing) {
-
-			if(tpcl::FileExists(OutputFile.c_str())) {
-				if(!tpcl::RemoveFile(OutputFile.c_str())) {
-					std::cerr << "Can't delete file '" << tpcl::FileNameToConsoleString(OutputFile) << "'.";
-					return false;
-				}
+			if(std::filesystem::exists(OutputFile) && !std::filesystem::remove(OutputFile)) {
+				fmt::print(stderr, "Can't delete file '{}'.", OutputFile.u8string());
+				return false;
 			}
 		}
 		if(Processor_.isIgnored(*it)) continue;
 		bool Result;
 		if(Processor_.isExcluded(*it)) {
-			if(Processor_.mode() == TProcessor::TMode::Processing)
-				Result = tpcl::DuplicateFile(InputFile.c_str(), OutputFile.c_str());
+			if(Processor_.mode() == TProcessor::TMode::Processing) {
+				std::error_code ErrorCode;
+				std::filesystem::copy(InputFile, OutputFile, ErrorCode);
+				Result = (ErrorCode.value() == 0);
+			}
 			else
 				Result = true;
 		}
@@ -359,7 +370,7 @@ bool ProcessFolder(const std::filesystem::path &Input_, const std::filesystem::p
 	}
 
 	for(auto it = Folders.begin(); it != Folders.end(); ++it) {
-		if(!ProcessFolder(Input_ + *it + TPCL_FS_SEPARATOR, Output_ + *it + TPCL_FS_SEPARATOR, Processor_))
+		if(!ProcessFolder(Input_ / *it, Output_ / *it, Processor_))
 			return false;
 	}
 	return true;
