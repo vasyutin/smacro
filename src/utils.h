@@ -18,12 +18,10 @@
 */
 #pragma once
 
-#include <tpcl-base.h>
+#include <tpcl.h>
 
-#include <vector>
 #include <cctype>
 #include <algorithm>
-#include <ctype.h>
 
 // -----------------------------------------------------------------------
 template <typename _TString>
@@ -31,7 +29,7 @@ void TrimString(_TString &String_)
 {
 struct THelper {
 	static bool notASpace(typename _TString::value_type Char_) {
-		#if defined(TPCL_OS_WINDOWS) && defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
 			return !iswspace(Char_);
 		#else
 			return Char_ < 0? true: !std::isspace(Char_);
