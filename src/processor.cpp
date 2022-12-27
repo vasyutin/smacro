@@ -168,7 +168,7 @@ bool TProcessor::processFile(const std::filesystem::path &Input_, const std::fil
 {
 	TProcessData Data(Input_, Output_, mode());
 	if(!Data.initialized()) {
-		std::cerr << Data.errorMessage() << std::endl;
+		fmt::print(stderr, "{}\n", Data.errorMessage());
 		return false;
 	}
 	//

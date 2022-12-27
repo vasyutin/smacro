@@ -156,14 +156,6 @@ bool ParseMasks(const std::vector<tpcl::TFileNameString> &MasksList_, TExcludePa
 		const tpcl::TFileNameChar *iMasks = Masks.c_str();
 		const tpcl::TFileNameChar *End = iMasks + Masks.size();
 
-/*		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-			tpcl::TFileNameString WMasks = tpcl::Utf8ToWideString(Masks);
-			const tpcl::TFileNameChar *iMasks = WMasks.c_str();
-			const tpcl::TFileNameChar *End = iMasks + WMasks.size();
-		#else
-			const tpcl::TFileNameChar *iMasks = Masks.c_str();
-			const tpcl::TFileNameChar *End = iMasks + Masks.size();
-		#endif*/
 		while(true) {
 			const tpcl::TFileNameChar *Delim = std::find(iMasks, End, tpcl::TFileNameChar(','));
 			if(Delim == iMasks) {
@@ -275,23 +267,6 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 		if(!ParseFileList(OrderFile.getValue(), Parameters_.OrderedFileList)) return false;
 	}
 
-
-	/*#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-		tpcl::Utf8ToWide(InputFolder.getValue(), Parameters_.InputFolder);
-		tpcl::Utf8ToWide(OutputFolder.getValue(), Parameters_.OutputFolder);
-		if(!ParseVariables(tpcl::Utf8ToWideString(VariablesFile.getValue()).c_str(), Parameters_)) return false;
-		if(OrderFile.isSet()) {
-			if(!ParseFileList(tpcl::Utf8ToWideString(OrderFile.getValue()).c_str(), Parameters_.OrderedFileList)) return false;
-		}
-	#else
-		Parameters_.InputFolder = InputFolder.getValue();
-		Parameters_.OutputFolder = OutputFolder.getValue();
-		if(!ParseVariables(VariablesFile.getValue().c_str(), Parameters_)) return false;
-		if(OrderFile.isSet()) {
-			if(!ParseFileList(OrderFile.getValue().c_str(), Parameters_.OrderedFileList)) return false;
-		}
-	#endif*/
-
 	if(ExcludeMasks.isSet() && !ParseMasks(ExcludeMasks.getValue(), Parameters_.ExcludePatterns)) {
 		fmt::print(stderr, "Error specifying exclude mask.\n");
 		return false;
@@ -401,7 +376,6 @@ bool ProcessList(const std::vector<std::filesystem::path> &OrderedList_, TProces
 {
 	TParameters Parameters;
 	if(!ParseParameters(Argc_, (const tpcl::TFileNameChar**)Argv_, Parameters)) {
-		std::cerr << '\n' << std::endl;
 		return RETCODE_INVALID_PARAMETERS;
 	}
 
