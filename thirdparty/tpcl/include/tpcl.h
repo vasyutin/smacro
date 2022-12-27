@@ -120,26 +120,71 @@ inline TFileNameString FillLeft(const TFileNameString &String_, size_t FieldSize
 		static inline std::string fromWide(const std::wstring& Name_, bool* Ok_ = nullptr) {
 			return fromWide(Name_.c_str(), (int)Name_.size(), Ok_);
 		}
+		// ---
+		static std::wstring toWide(const char* UTF8_, int UTF8Size_ = -1, bool* Ok_ = nullptr) {
+			if(UTF8Size_ < 0) UTF8Size_ = (int)strlen(UTF8_);
+			std::wstring RetValue;
+			if(!UTF8Size_) {
+				if(Ok_) *Ok_ = true;
+				return RetValue;
+			}
+			int CharsCount = MultiByteToWideChar(CP_UTF8, 0, UTF8_, UTF8Size_, NULL, 0);
+			if(CharsCount <= 0) {
+				if(Ok_) *Ok_ = false;
+				return RetValue;
+			}
+			//
+			RetValue.resize(CharsCount);
+			if(MultiByteToWideChar(CP_UTF8, 0, UTF8_, UTF8Size_, (wchar_t*)(RetValue.c_str()), CharsCount) <= 0) {
+				RetValue.clear();
+				if(Ok_) *Ok_ = false;
+			}
+			else {
+				if(Ok_) *Ok_ = true;
+			}
+			return RetValue;
+		}
+		// ---
+		static std::wstring toWide(const std::string& Name_, bool* Ok_ = nullptr) {
+			return toWide(Name_.c_str(), (int)Name_.size(), Ok_);
+		}
 	};
 
-	// −−−
-	/*inline std::string WideToUtf8String(const wchar_t* Unicode_, int UnicodeSize_, bool* Ok_ = nullptr) {
-		std::string RetValue;
-		bool IsOk = WideToUtf8(Unicode_, UnicodeSize_, RetValue);
-		if (Ok_) *Ok_ = IsOk;
-		return RetValue;
-	}
-	inline std::string WideToUtf8String(const wchar_t* Unicode_, bool* Ok_ = nullptr) { return WideToUtf8String(Unicode_, -1, Ok_); }
-	inline std::string WideToUtf8String(const std::wstring& String_, bool* Ok_ = nullptr) { return WideToUtf8String(String_.c_str(), (int)String_.size(), Ok_); }
-	*/
-	// −−−
+	// ---
 	inline std::string FileNameToUtf8(const TFileNameChar* Name_) {return Utf8Converter::fromWide(Name_);}
-	inline std::string FileNameToUtf8(const TFileNameString& Name_) {return  Utf8Converter::fromWide(Name_);}
+	inline std::string FileNameToUtf8(const TFileNameString& Name_) {return Utf8Converter::fromWide(Name_);}
+
+	inline std::wstring Utf8ToFileName(const char* Name_, bool* Ok_ = nullptr) {return Utf8Converter::toWide(Name_, Ok_);}
+	inline std::wstring Utf8ToFileName(const std::string& Name_, bool* Ok_ = nullptr) {return Utf8Converter::toWide(Name_, Ok_);}
+
+	// ---
+	inline void AppendSeparatorIfAbsent(std::string &Name_) {
+		if(Name_.empty() || Name_.back() != '\\')
+			Name_ += '\\';
+	}
+	// ---
+	inline void AppendSeparatorIfAbsent(std::wstring &Name_) {
+		if(Name_.empty() || Name_.back() != L'\\')
+			Name_ += L'\\';
+	}
 #else
 	template <typename _T>
 	inline const _T& FileNameToUtf8(const _T& Name_) {return Name_;}
+
+	template <typename _T>
+	inline const _T& Utf8ToFileName(const _T& Name_, bool* Ok_ = nullptr) {
+		if(Ok_) *Ok_ = true;
+		return Name_;
+	}
+
 	//inline std::string FileNameToUtf8(const TFileNameChar* Name_) {return Name_;}
 	//inline std::string FileNameToUtf8(const TFileNameString& Name_) {return Name_;}
+
+	// ---
+	inline void AppendSeparatorIfAbsent(std::string &Name_) {
+		if(Name_.empty() || Name_.back() != '/')
+			Name_ += '/';
+	}
 #endif
 
 } // namespace tpcl

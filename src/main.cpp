@@ -1,7 +1,7 @@
 /*
 * This file is part of SMACRO.
 *
-* Written by Sergey Vasyutin (sergey [at] vasyut.in)
+* Â© 2017-2022 Sergey Vasyutin (sergey [at] vasyut.in)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ const int RETCODE_INVALID_PARAMETERS = 1;
 const int RETCODE_PROCESS_ERROR = 2;
 
 // -----------------------------------------------------------------------
-bool ParseVariables(const tpcl::TFileNameChar *FileName_, TParameters &Parameters_)
+bool ParseVariables(const std::filesystem::path &FileName_, TParameters &Parameters_)
 {
 	struct TProcessor {
 		TParameters &m_Parameters;
@@ -70,9 +70,9 @@ bool ParseVariables(const tpcl::TFileNameChar *FileName_, TParameters &Parameter
 		};
 
 	// ---
-	std::ifstream File(FileName_);
+	std::ifstream File(FileName_.c_str());
 	if(!File) {
-		fmt::print("Can't open file '{}'." << tpcl::FileNameToConsoleString(FileName_) << "'." << std::endl;
+		fmt::print(stderr, "Can't open file '{}'.\n", FileName_.u8string());
 		return false;
 	}
 	//
@@ -80,12 +80,12 @@ bool ParseVariables(const tpcl::TFileNameChar *FileName_, TParameters &Parameter
 	std::string Line;
 	TProcessor Processor(Parameters_);
 	while(std::getline(File, Line)) {
-		// Óäàëÿåì ïðîáåëû â íà÷àëå è êîíöå ñòðîêè
+		// Ð£Ð´Ð°Ð»ÑÐµÐ¼ Ð¿Ñ€Ð¾Ð±ÐµÐ»Ñ‹ Ð² Ð½Ð°Ñ‡Ð°Ð»Ðµ Ð¸ ÐºÐ¾Ð½Ñ†Ðµ ÑÑ‚Ñ€Ð¾ÐºÐ¸
 		LineNo++;
 		TrimString(Line);
 		if(Line.empty() || Line[0] == '#') continue;
 		if(!Processor.processString(Line)) {
-			std::cerr << "Error reading file '" << tpcl::FileNameToConsoleString(FileName_) << "' (line: " << LineNo << ")." << std::endl;
+			fmt::print(stderr, "Error reading file '{}' (line: {}).\n", FileName_.u8string(), LineNo);
 			return false;
 		}
 	}
@@ -149,18 +149,21 @@ void WildcardToRegexp(_TString &String_)
 } 
 
 // -----------------------------------------------------------------------
-bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &ExcludePatterns_)
+bool ParseMasks(const std::vector<tpcl::TFileNameString> &MasksList_, TExcludePatterns &ExcludePatterns_)
 {
 	std::set<tpcl::TFileNameString> Patterns;
 	for(const auto &Masks: MasksList_) {
-		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+		const tpcl::TFileNameChar *iMasks = Masks.c_str();
+		const tpcl::TFileNameChar *End = iMasks + Masks.size();
+
+/*		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
 			tpcl::TFileNameString WMasks = tpcl::Utf8ToWideString(Masks);
 			const tpcl::TFileNameChar *iMasks = WMasks.c_str();
 			const tpcl::TFileNameChar *End = iMasks + WMasks.size();
 		#else
 			const tpcl::TFileNameChar *iMasks = Masks.c_str();
 			const tpcl::TFileNameChar *End = iMasks + Masks.size();
-		#endif
+		#endif*/
 		while(true) {
 			const tpcl::TFileNameChar *Delim = std::find(iMasks, End, tpcl::TFileNameChar(','));
 			if(Delim == iMasks) {
@@ -179,7 +182,7 @@ bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &Ex
 				ExcludePatterns_.push_back(std::move(TExcludePatterns::value_type(Value)));
 			}
 			catch(std::regex_error&) {
-				std::cerr << "Invalid file mask '" << tpcl::FileNameToConsoleString(Value) << "'.";
+				fmt::print(stderr, "Invalid file mask '{}'.\n", tpcl::FileNameToUtf8(Value));
 				return false;
 			}
 			//
@@ -191,11 +194,11 @@ bool ParseMasks(const std::vector<std::string> &MasksList_, TExcludePatterns &Ex
 }
 
 // -----------------------------------------------------------------------
-bool ParseFileList(const tpcl::TFileNameChar *FileName_, std::vector<tpcl::TFileNameString> &Files_)
+bool ParseFileList(const std::filesystem::path &FileName_, std::vector<std::filesystem::path> &Files_)
 {
-	std::ifstream File(FileName_);
+	std::ifstream File(FileName_.c_str());
 	if(!File) {
-		std::cerr << "Can't open file '" << tpcl::FileNameToConsoleString(FileName_) << "'." << std::endl;
+		fmt::print(stderr, "Can't open file '{}'.\n", FileName_.u8string());
 		return false;
 	}
 	//
@@ -203,27 +206,17 @@ bool ParseFileList(const tpcl::TFileNameChar *FileName_, std::vector<tpcl::TFile
 	std::string Line;
 	while(std::getline(File, Line)) {
 		LineNo++;
-		// Óäàëÿåì ïðîáåëû â íà÷àëå è êîíöå ñòðîêè
+		// Ð£Ð´Ð°Ð»ÑÐµÐ¼ Ð¿Ñ€Ð¾Ð±ÐµÐ»Ñ‹ Ð² Ð½Ð°Ñ‡Ð°Ð»Ðµ Ð¸ ÐºÐ¾Ð½Ñ†Ðµ ÑÑ‚Ñ€Ð¾ÐºÐ¸
 		TrimString(Line);
 		if(Line.empty() || Line[0] == '#') continue;
 
-		#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
-			tpcl::TFileNameString String;
-			if(!tpcl::Utf8ToWide(Line, String)) {
-				std::cerr << "Invalid UTF-8 string (" << tpcl::FileNameToConsoleString(FileName_) << ": " << LineNo << ")." << std::endl;
-				return false;
-			}
-			Files_.emplace_back(std::move(String));
-		#elif defined(TPCL_OS_WINDOWS)
-			std::string String;
-			if(!tpcl::Utf8ToLocal(Line, String)) {
-				std::cerr << "Invalid UTF-8 string (" << tpcl::FileNameToConsoleString(FileName_) << ": " << LineNo << ")." << std::endl;
-				return false;
-			}
-			Files_.emplace_back(std::move(String));
-		#else
-			Files_.emplace_back(std::move(Line));
-		#endif
+		bool Ok;
+		tpcl::TFileNameString String = tpcl::Utf8ToFileName(Line, &Ok);
+		if(!Ok) {
+			fmt::print(stderr, "Invalid UTF-8 string ({}: {}).\n", FileName_.u8string(), LineNo);
+			return false;
+		}
+		Files_.emplace_back(std::filesystem::path(String));
 	}
 	return true;
 }
@@ -273,7 +266,17 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 		return false;
 	}
 
-	#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
+	Parameters_.InputFolder = InputFolder.getValue();
+	Parameters_.InputFolder.make_preferred();
+	Parameters_.OutputFolder = OutputFolder.getValue();
+	Parameters_.OutputFolder.make_preferred();
+	if(!ParseVariables(VariablesFile.getValue(), Parameters_)) return false;
+	if(OrderFile.isSet()) {
+		if(!ParseFileList(OrderFile.getValue(), Parameters_.OrderedFileList)) return false;
+	}
+
+
+	/*#if defined(TPCL_FILE_NAME_CHAR_TYPE_IS_WCHAR_T)
 		tpcl::Utf8ToWide(InputFolder.getValue(), Parameters_.InputFolder);
 		tpcl::Utf8ToWide(OutputFolder.getValue(), Parameters_.OutputFolder);
 		if(!ParseVariables(tpcl::Utf8ToWideString(VariablesFile.getValue()).c_str(), Parameters_)) return false;
@@ -287,14 +290,14 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 		if(OrderFile.isSet()) {
 			if(!ParseFileList(OrderFile.getValue().c_str(), Parameters_.OrderedFileList)) return false;
 		}
-	#endif
+	#endif*/
 
 	if(ExcludeMasks.isSet() && !ParseMasks(ExcludeMasks.getValue(), Parameters_.ExcludePatterns)) {
-		std::cerr << "Error specifying exclude mask." << std::endl;
+		fmt::print(stderr, "Error specifying exclude mask.\n");
 		return false;
 	}
 	if(IgnoreMasks.isSet() && !ParseMasks(IgnoreMasks.getValue(), Parameters_.IgnorePatterns)) {
-		std::cerr << "Error specifying ignore mask." << std::endl;
+		fmt::print(stderr, "Error specifying ignore mask.\n");
 		return false;
 	}
 	Parameters_.AlternativeOperatorPrefix = AtPrefixed.isSet();
@@ -302,34 +305,37 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 }
 
 // -----------------------------------------------------------------------
-bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameString &Output_, TProcessor &Processor_)
+bool ProcessFolder(const std::filesystem::path &Input_, const std::filesystem::path &Output_, TProcessor &Processor_)
 {
-	if(!tpcl::FolderExists(Input_.c_str())) {
-		std::cerr << "Error accessing folder '" << tpcl::FileNameToConsoleString(Input_) << "'.";
+	if(!(std::filesystem::exists(Input_) && std::filesystem::is_directory(Input_))) {
+		fmt::print(stderr, "Error accessing folder '{}'.", Input_.u8string());
 		return false;
 	}
 
 	if(Processor_.mode() == TProcessor::TMode::Processing) {
-		if(!tpcl::FolderExists(Output_.c_str())) {
-			if(!tpcl::CreatePath(Output_.c_str())) {
-				std::cerr << "Can't create folder '" << tpcl::FileNameToConsoleString(Output_) << "'.";
+
+		if(!std::filesystem::exists(Output_)) {
+			if(!std::filesystem::create_directories(Output_)) {
+				fmt::print(stderr, "Can't create folder '{}'.", Output_.u8string());
 				return false;
 			}
 		}
 	}
 
-	std::vector<tpcl::TFileNameString> Folders, Files;
-	if(!tpcl::FolderEntries(Input_.c_str(), Folders, Files)) {
-		std::cerr << "Can't get contents of the folder '" << tpcl::FileNameToConsoleString(Input_) << "'.";
-		return false;
+	std::vector<std::filesystem::path> Folders, Files;
+	for(auto const& Entry: std::filesystem::directory_iterator(Input_)) {
+		if(Entry.is_directory()) 
+			Folders.emplace_back(Entry.path().filename());
+		else
+			Files.emplace_back(Entry.path().filename());
 	}
-
 	std::sort(Folders.begin(), Folders.end(), std::locale());
 	std::sort(Files.begin(), Files.end(), std::locale());
 
 	for(auto it = Files.begin(); it != Files.end(); ++it) {
-		tpcl::TFileNameString InputFile(Input_ + *it), OutputFile(Output_ + *it);
+		std::filesystem::path InputFile(Input_ / *it), OutputFile(Output_ / *it);
 		if(Processor_.mode() == TProcessor::TMode::Processing) {
+
 			if(tpcl::FileExists(OutputFile.c_str())) {
 				if(!tpcl::RemoveFile(OutputFile.c_str())) {
 					std::cerr << "Can't delete file '" << tpcl::FileNameToConsoleString(OutputFile) << "'.";
@@ -360,10 +366,10 @@ bool ProcessFolder(const tpcl::TFileNameString &Input_, const tpcl::TFileNameStr
 }
 
 // -----------------------------------------------------------------------
-bool ProcessList(const std::vector<tpcl::TFileNameString> &OrderedList_, TProcessor &Processor_)
+bool ProcessList(const std::vector<std::filesystem::path> &OrderedList_, TProcessor &Processor_)
 {
 	assert(Processor_.mode() == TProcessor::TMode::Collecting);
-	tpcl::TFileNameString NullOutput;
+	std::filesystem::path NullOutput;
 	for(auto it = OrderedList_.begin(); it != OrderedList_.end(); ++it) {
 		if(!Processor_.processFile(*it, NullOutput))
 			return false;
@@ -391,8 +397,9 @@ bool ProcessList(const std::vector<tpcl::TFileNameString> &OrderedList_, TProces
 	// Add SMACRO_ROOT var
 	std::string SmacroRoot("SMACRO_ROOT");
 	if(Parameters.Variables.find(SmacroRoot) == Parameters.Variables.end()) {
-		?? \ or /
-		Parameters.Variables[SmacroRoot] = tpcl::FileNameToUtf8(Parameters.InputFolder.c_str());
+		std::string Root = Parameters.InputFolder.u8string();
+		tpcl::AppendSeparatorIfAbsent(Root);
+		Parameters.Variables[SmacroRoot] = Root;
 	}
 
 	TProcessor Processor(Parameters, TProcessor::TMode::Collecting);

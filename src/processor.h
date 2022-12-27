@@ -1,7 +1,7 @@
 /*
 * This file is part of SMACRO.
 *
-* Written by Sergey Vasyutin (sergey [at] vasyut.in)
+* В© 2017-2022 Sergey Vasyutin (sergey [at] vasyut.in)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 // -----------------------------------------------------------------------
 class TProcessor {
 public:
-	// Сбор данных для автонумератора, обработка
+	// РЎР±РѕСЂ РґР°РЅРЅС‹С… РґР»СЏ Р°РІС‚РѕРЅСѓРјРµСЂР°С‚РѕСЂР°, РѕР±СЂР°Р±РѕС‚РєР°
 	enum class TMode {Collecting, Processing};
 
 	// ---
@@ -35,13 +35,13 @@ public:
 	void setMode(TMode Mode_) {m_Mode = Mode_;}
 
 	// ---
-	bool processFile(const tpcl::TFileNameString& Input_, const tpcl::TFileNameString& Output_);
+	bool processFile(const std::filesystem::path& Input_, const std::filesystem::path& Output_);
 	// ---
-	bool isExcluded(const tpcl::TFileNameString& FileName_) const {
+	bool isExcluded(const std::filesystem::path& FileName_) const {
 		return matchesPatterns(FileName_, m_ExcludePatterns);
 	}
 	// ---
-	bool isIgnored(const tpcl::TFileNameString& FileName_) const {
+	bool isIgnored(const std::filesystem::path& FileName_) const {
 		return matchesPatterns(FileName_, m_IgnorePatterns);
 	}
 
@@ -49,21 +49,21 @@ private:
 	TMode m_Mode;
 
 	struct TProcessData {
-		TProcessData(const tpcl::TFileNameString& InputFile_, const tpcl::TFileNameString& OutputFile_, TMode Mode_);
+		TProcessData(const std::filesystem::path& InputFile_, const std::filesystem::path& OutputFile_, TMode Mode_);
 		bool initialized() const;
 		const std::string& errorMessage() const { return ErrorMessage; }
 
 		std::vector<std::unique_ptr<std::ifstream> > Input;
 		// Track included files to prevent cyclic includes
-		std::vector<tpcl::TFileNameString> InputFiles;
+		std::vector<std::filesystem::path> InputFiles;
 		std::vector<unsigned> CurrentLines;
 
 		std::ofstream Output;
-		const tpcl::TFileNameString& OutputFile;
+		const std::filesystem::path& OutputFile;
 		std::string ErrorMessage;
 		TMode Mode;
 
-		const tpcl::TFileNameString& inputFile() const { return InputFiles.back(); }
+		const std::filesystem::path& inputFile() const { return InputFiles.back(); }
 		unsigned lineNo() const { return CurrentLines.back(); }
 	};
 

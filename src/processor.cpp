@@ -1,7 +1,7 @@
 /*
 * This file is part of SMACRO.
 *
-* Written by Sergey Vasyutin (sergey [at] vasyut.in)
+* В© 2017-2022 Sergey Vasyutin (sergey [at] vasyut.in)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -425,7 +425,7 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 				#else
 					std::string FileName(Match[1].first, Match[1].second);
 				#endif
-				// Преобразовывем разделители к системным
+				// РџСЂРµРѕР±СЂР°Р·РѕРІС‹РІРµРј СЂР°Р·РґРµР»РёС‚РµР»Рё Рє СЃРёСЃС‚РµРјРЅС‹Рј
 				for(auto it = FileName.begin(); it != FileName.end(); ++it) {
 					#if defined(TPCL_OS_WINDOWS)
 						if(*it == TPCL_FNCHAR('/')) *it = TPCL_FS_SEPARATOR;
@@ -433,7 +433,7 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 						if(*it == '\\') *it = TPCL_FS_SEPARATOR;
 					#endif
 				}
-				// Удаляем повторяющиеся разделители
+				// РЈРґР°Р»СЏРµРј РїРѕРІС‚РѕСЂСЏСЋС‰РёРµСЃСЏ СЂР°Р·РґРµР»РёС‚РµР»Рё
 				if(!FileName.empty()) {
 					for(auto it = FileName.begin() + 1; it != FileName.end();) {
 						if(*it == TPCL_FS_SEPARATOR && *(it - 1) == TPCL_FS_SEPARATOR) {
@@ -569,7 +569,7 @@ TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string
 		}
 		else {
 			assert(TResult::OperatorElif == Result);
-			// Вызываем, чтобы проверить синтаксис условия, даже если это условие не проверяется
+			// Р’С‹Р·С‹РІР°РµРј, С‡С‚РѕР±С‹ РїСЂРѕРІРµСЂРёС‚СЊ СЃРёРЅС‚Р°РєСЃРёСЃ СѓСЃР»РѕРІРёСЏ, РґР°Р¶Рµ РµСЃР»Рё СЌС‚Рѕ СѓСЃР»РѕРІРёРµ РЅРµ РїСЂРѕРІРµСЂСЏРµС‚СЃСЏ
 			if(!calculateExp(Line_, CurrentConditionIsTrue, Data_)) return TResult::SyntaxError;
 			if(TrueConditionExists)
 				CurrentConditionIsTrue = false;
@@ -578,7 +578,7 @@ TProcessor::TResult TProcessor::processOperator(TProcessData &Data_, std::string
 		}
 	}
 
-	// Обработка else
+	// РћР±СЂР°Р±РѕС‚РєР° else
 	while(true) {
 		TResult Result = processLinesTillNextKeyword(Data_, Line_, Skip_ ? true: TrueConditionExists);
 		if(TResult::OperatorIf == Result) {
