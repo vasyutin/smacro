@@ -215,12 +215,11 @@ bool ParseFileList(const std::filesystem::path &FileName_, std::vector<std::file
 
 // -----------------------------------------------------------------------
 const tpcl::TFileNameChar *g_UsageMessage = 
-	TCLAP_STR("All the files being processed (except the files excluded from the processing with the -e switch) are assumed to be in UTF-8 encoding.\n")
-	TCLAP_STR("Example:\n")
+	TCLAP_STR("EXAMPLE:\n")
 	#if defined(TPCL_OS_WINDOWS)
-		TCLAP_STR("\tsmacro -s ..\\..\\example\\source -d ..\\..\\build\\doc_res -v ..\\..\\example\\config -e *.txt,*.png -e *.jpg\n\n")
+		TCLAP_STR("  smacro -s .\\source -d ..\\build\\doc -v .\\config.cfg -e *.jpg,*.png\n\n")
 	#else
-		"\tsmacro -s ../../example/source -d ../../build/doc_res -v ../../example/config -e *.txt,*.png -e *.jpg\n\n"
+		"  smacro -s ./source -d ../build/doc -v ./config.cfg -e *.jpg,*.png\n\n"
 	#endif
 	TCLAP_STR("SMACRO (Simple MACRO processor) is written by Sergey Vasyutin (see https://github.com/vasyutin/smacro).");
 
@@ -229,26 +228,27 @@ bool ParseParameters(int Argc_, const tpcl::TFileNameChar **Argv_, TParameters &
 {
 	TCLAP::CmdLine CmdParser(g_UsageMessage, TCLAP_STR(' '), TCLAP_STR("2.1"));
 	TCLAP::ValueArg<tpcl::TFileNameString> InputFolder(TCLAP_STR("s"), TCLAP_STR("source"), 
-		TCLAP_STR("The folder, containing documentation files to process"), true, tpcl::TFileNameString(), 
+		TCLAP_STR("The name of the folder containing the files to be processed."), true, tpcl::TFileNameString(), 
 		TCLAP_STR("source folder"), CmdParser);
 	TCLAP::ValueArg<tpcl::TFileNameString> OutputFolder(TCLAP_STR("d"), TCLAP_STR("destination"), 
-		TCLAP_STR("The destination folder for the processed files"), true, tpcl::TFileNameString(), 
+		TCLAP_STR("The name of the folder where the result of the processing is written."), true, tpcl::TFileNameString(), 
 		TCLAP_STR("destination folder"), CmdParser);
 	TCLAP::ValueArg<tpcl::TFileNameString> VariablesFile(TCLAP_STR("v"), TCLAP_STR("variables"), 
-		TCLAP_STR("The file, containing values of the variables for the current run (the text in the file is assumed to be in UTF-8)."), 
-		true, tpcl::TFileNameString(), TCLAP_STR("variables file"), CmdParser);
+		TCLAP_STR("The name of the file containing the values of the variables used in processing."), 
+		true, tpcl::TFileNameString(), TCLAP_STR("file with variables"), CmdParser);
 	TCLAP::MultiArg<tpcl::TFileNameString> ExcludeMasks(TCLAP_STR("e"), TCLAP_STR("exclude"),
-		TCLAP_STR("The mask of filename to exclude from processing. This files are only copied to the output folder."), 
-		false, TCLAP_STR("exclude masks"), CmdParser);
+		TCLAP_STR("Templates or file names that are not processed when copied, i.e. copied unchanged to the folder with the results of processing."), 
+		false, TCLAP_STR("exclude templates"), CmdParser);
 	TCLAP::MultiArg<tpcl::TFileNameString> IgnoreMasks(TCLAP_STR("i"), TCLAP_STR("ignore"),
-		TCLAP_STR("The mask of filename to ignore. This files are not copied to the output folder."), 
-		false, TCLAP_STR("ignore masks"), CmdParser);
+		TCLAP_STR("Templates or file names that are ignored by the program, i.e. they are not copied to the results folder."), 
+		false, TCLAP_STR("ignore templates"), CmdParser);
 	TCLAP::ValueArg<tpcl::TFileNameString> OrderFile(TCLAP_STR("o"), TCLAP_STR("order"), 
-		TCLAP_STR("The file containing the list of the files to parse to look to the $number directive in required order"), 
+		TCLAP_STR("The name of file that lists the source files in the order in which they will be processed. May be required for proper auto-numbering of text fragments."), 
 		false, tpcl::TFileNameString(), TCLAP_STR("order file"), CmdParser);
 	TCLAP::SwitchArg AtPrefixed(TCLAP_STR("@"), TCLAP_STR("at-prefixed"), 
-		TCLAP_STR("Use symbol '@' instead of '#' as the prefix for the control operators (@//, @if, @elif, @else, @endif and @include ")
-		TCLAP_STR("instead of #//, #if, #elif, #else, #endif and #include) in text with plenty of '#' (ex. in Markdown)"), CmdParser, false);
+		TCLAP_STR("Use the '@' symbol instead of '#' in control directives. Instead of using #//, #if, #elif, #else, #endif and #include you'll be able to use ")
+		TCLAP_STR("@//, @if, @elif, @else, @endif and @include directives. Allows you to make control directives more readable in files where the '#' symbol is ")
+		TCLAP_STR("used frequently for example in Markdown files. Setting this switch affects all the source files."), CmdParser, false);
 
 	try {
 		CmdParser.parse(Argc_, Argv_);
