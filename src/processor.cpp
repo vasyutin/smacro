@@ -43,6 +43,7 @@ std::string TProcessor::fileAndLineMessageEnding(const TProcessData &Data_)
 // -----------------------------------------------------------------------
 TProcessor::TProcessor(const TParameters &Parameters_, TMode Mode_): 
 	m_Mode(Mode_),
+	m_AlternativeOperatorPrefix(Parameters_.AlternativeOperatorPrefix),
 	m_Variables(Parameters_.Variables),
 	m_ExcludePatterns(Parameters_.ExcludePatterns),
 	m_IgnorePatterns(Parameters_.IgnorePatterns),
@@ -382,7 +383,7 @@ TProcessor::TResult TProcessor::readNextLine(TProcessData &Data_, std::string &L
 		if(Index == Line_.cend()) 
 			return TResult::OK;
 
-		if(*Index != '#') {
+		if(*Index != (m_AlternativeOperatorPrefix? '@': '#')) {
 			TResult Res = valuesSubstitution(Data_, Line_);
 			if(TResult::OK != Res) return Res;
 			if(DoProcessing_) {

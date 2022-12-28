@@ -47,6 +47,7 @@ public:
 
 private:
 	TMode m_Mode;
+	bool m_AlternativeOperatorPrefix;
 
 	struct TProcessData {
 		TProcessData(const std::filesystem::path& InputFile_, const std::filesystem::path& OutputFile_, TMode Mode_);
