@@ -413,7 +413,7 @@ In chapter <b>Introduction</b>...
 @if LANGUAGE=="Ru"
 ### Примеры
 
-Примеры использования директив находятся в файлах с каталоге /example репозитория.
+С примерами использования директив можно ознакомиться в примерах, которые находятся в файлах с каталоге /example репозитория.
 
 @//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 @else
@@ -427,13 +427,22 @@ In chapter <b>Introduction</b>...
 @if LANGUAGE=="Ru"
 ## Сборка и установка программы
 
+### Linux
+
+Для установки SMACRO под Linux необходимо выполнить сборку выполняемого файла из исходных текстов. Склонируйте репозиторий или загрузите архив с исходными текстами со страницы релизов (https://github.com/vasyutin/smacro/releases) и распакуйте его. Затем перейдите в каталог */projects/gcc* и запустите команды
+
+```sh
+make
+sudo make install
+```
+
 @//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 @else
 ## Build and installation
 
-### How to build/install on Linux
+### Linux
 
-To install SMACRO on Linux you have to build program's binary from sources. Just clone the repo or download the sources from the project's releases page (https://github.com/vasyutin/smacro/releases) and unzip them. Then chdir to *\<ProjectRoot\>/projects/linux* and run
+To install SMACRO on Linux you have to build program's binary from sources. Just clone the repo or download the sources from the project's releases page (https://github.com/vasyutin/smacro/releases) and unpack them. Then chdir to */projects/gcc* and run
 
 ```sh
 make
@@ -442,11 +451,23 @@ sudo make install
 @endif
 @//----------------------------------------------------------------------------
 
-### How to install on Windows
+
+@//============================================================================
+@if LANGUAGE=="Ru"
+### Windows
+
+Исполняемый файл программы может быть загружен со страницы релизов https://github.com/vasyutin/smacro/releases. Файл находится в ZIP-архиве. Извлеките исполняемый файл из архива и запишите его в папку, имя которой находится в списке в переменной окружения PATH. Это позволит запускать его из командной строки.
+
+
+
+
+@//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+@else
+### Windows
 
 The executable file for Windows can be downloaded at https://github.com/vasyutin/smacro/releases. The file is distributed as a ZIP archive. Extract the executable from the archive and put it in the directory that is listed in your PATH environment variable, to ensure that it can be called from a command prompt.
 
-### How to build on Windows
+#### Build with MinGW
 
 To build SMACRO from sources you have to clone the repo or or download the sources from the project's releases pages (https://github.com/vasyutin/smacro/releases) and unzip them. 
 
@@ -465,6 +486,10 @@ The compiled binary is placed in the folder *\<ProjectRoot\>\\build\\release* an
 By now I supply solution (.sln) with the project files (.vcproj) files for Visual Studio 2015 Community Edition. To build the software open the solution file *\<ProjectRoot\>\\projects\\VS2015\\smacro.sln* and start the build process. The compiled binaries will be placed in the folder *\<ProjectRoot\>\build\Platform\Configuration*, where the *Platform* is 'Win32' or 'x64' and the *Configuration* is 'Debug' or 'Release'. To run the program outside Visual Studio, you have to copy the result binary file *smacro.exe* to the folder, which is added to your *PATH* environment variable.
 
 The sources are nothing than pure C++ thus the project can be opened in compiled in the newer version of Visual Studio.
+
+
+@endif
+@//----------------------------------------------------------------------------
 
 ## ${LICENCE}
 
