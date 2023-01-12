@@ -241,7 +241,7 @@ Examples of how to use the directives can be found in the examples, which are lo
 
 ### Linux
 
-To install SMACRO on Linux you have to build program's binary from sources. Just clone the repo or download the sources from the project's releases page (https://github.com/vasyutin/smacro/releases) and unpack them. Then chdir to */projects/gcc* and run
+To install SMACRO on Linux you have to build program's binary from sources. Just clone the repo or download the sources from the project's releases page (https://github.com/vasyutin/smacro/releases) and unpack them. Then chdir to `/projects/gcc` and run
 
 ```sh
 make
@@ -259,7 +259,7 @@ Clone the repo or download the sources from the project's releases pages (https:
 ```sh
 mingw32-make
 ``` 
-The compiled binary is placed in the folder `/build/release` and named `smacro.exe*` To use it put it in the directory is listed in your `PATH` environment variable.
+The compiled binary is placed in the folder `/build/release` and named `smacro.exe` To use it put it in the directory is listed in your `PATH` environment variable.
 
 ### Build with Visual Studio
 

@@ -548,7 +548,7 @@ Examples of how to use the directives can be found in the examples, which are lo
 
 ### Linux
 
-Для установки SMACRO под Linux необходимо выполнить сборку выполняемого файла из исходных текстов. Склонируйте репозиторий или загрузите архив с исходными текстами со страницы релизов (https://github.com/vasyutin/smacro/releases) и распакуйте его. Затем перейдите в каталог */projects/gcc* и запустите команды
+Для установки SMACRO под Linux необходимо выполнить сборку выполняемого файла из исходных текстов. Склонируйте репозиторий или загрузите архив с исходными текстами со страницы релизов (https://github.com/vasyutin/smacro/releases) и распакуйте его. Затем перейдите в каталог `/projects/gcc` и запустите команды
 
 ```sh
 make
@@ -560,7 +560,7 @@ sudo make install
 
 ### Linux
 
-To install SMACRO on Linux you have to build program's binary from sources. Just clone the repo or download the sources from the project's releases page (https://github.com/vasyutin/smacro/releases) and unpack them. Then chdir to */projects/gcc* and run
+To install SMACRO on Linux you have to build program's binary from sources. Just clone the repo or download the sources from the project's releases page (https://github.com/vasyutin/smacro/releases) and unpack them. Then chdir to `/projects/gcc` and run
 
 ```sh
 make
@@ -601,7 +601,7 @@ Clone the repo or download the sources from the project's releases pages (https:
 ```sh
 mingw32-make
 ``` 
-The compiled binary is placed in the folder `/build/release` and named `smacro.exe*` To use it put it in the directory is listed in your `PATH` environment variable.
+The compiled binary is placed in the folder `/build/release` and named `smacro.exe` To use it put it in the directory is listed in your `PATH` environment variable.
 
 ### Build with Visual Studio
 
