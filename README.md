@@ -85,7 +85,23 @@ VERSION_FOR_PRINT
 ```
 In the file with variables, blank lines and lines starting with # are ignored.
 
-TODO
+## Processing directives
+
+### Directive for variable value substitution
+
+A construct of the form
+```
+${variable_name}
+```
+is replaced in the text by the value of the specified variable. If such a variable is not defined in the variable file, the program will terminate with an error message.
+
+### Directives for controlling the processing
+
+The SMACRO language supports several directives that control which fragments of a file are included in its resulting version. Directives must be at the beginning of the line possibly preceded by spaces and tabs. Lines with directives are not copied into the resulting version of the file.
+
+**#//** - comment directive. A line starting with this operator is ignored.
+
+**#if**, **#elif**, **#else**, **#endif** - conditional operator directives. They play the same role as the preprocessor directives in C/C++. Conditions may use expressions that check if variables are defined and also check their values. Blocks of text for which the conditions are met are overwritten in summary files. An example of setting a conditional statement:
 ```
 #if (defined(VAR1) && !defined(VAR2)) || Language == "Slovenščina"
 	Besedilo na slovenskem
@@ -96,21 +112,27 @@ TODO
 #endif
 ```
 
-TODO
+**#include** - file inclusion directive. Instead of the string with this directive the contents of the file specified in it are substituted. The name of the included file is specified in square brackets, just like in the C/C++ macro processor. For example,
+```
+#include<./include/some-file.txt>
+```
+For convenience, you can use the built-in variable ${SMACRO_ROOT}, which contains the path to the folder with the source files, when specifying the file name.
+```
+#include<${SMACRO_ROOT}/include/file.inc>
+```
+If you specify the `-@` or `--at-prefixed` key when starting a program, you will have to use the directives @//, @if, @elif, @else, @endif and @include instead of the directives #//, #if, #elif, #else, #endif and #include. This allows you to make SMACRO language control constructions in files that often use the `#` symbol, such as Markdown files, more readable. Setting this key affects all source files during processing.
 
-### Выражения в условных директивах
+### Expressions in conditional directives
 
-Выражения в директивах **#if** и **#elif** строятся по правилам, принятым для языков C и C++. Они могут включать в себя операторы и скобки, управляющие порядком вычисления выражений. Можно использовать следующие операторы:
+Expressions in **#if** and **#elif** directives are built according to the rules accepted for C and C++ languages. They may include operators and brackets controlling the order of expressions evaluation. The following operators can be used:
 
-* **defined(**имя_переменной**)** - оператор проверки того, определена ли переменная в файле переменных. Возвращает true, если переменная определена и false в противном случае. Пример использования:
+* **defined(variable_name)** is an operator to check if a variable is defined in a variable file. Returns true if the variable is defined and false otherwise. Example usage:
 ```
 #if defined(VERSION) && defined(FOR_PRINT)
 	...
 #endif
 ```
-
-* операторы сравнения **==** (равно), **!=** (не равно), **>** (больше), **>=** (больше или равно), **<** (меньше) и **<=** (меньше или равно) выполняют лексикографическое сравнение значений переменных или строковых констант. Строковые константы заключаются в двойные кавычки. Операторы возвращают true при истинности условия, или false при его ложности. Примеры использования операторов сравнения:
-
+* **==** (equal), **!=** (not equal), **>** (more), **>=** (more or equal), **<** (less) and **<=** (less or equal) comparison operators perform lexicographical comparison of variable or string constant values. String constants are enclosed in double quotes. Examples of using comparison operators:
 ```
 #if (VERSION > "1" && Language == "English") || Language == "Italiano"
    #if TARGET == "HTML"
@@ -120,26 +142,25 @@ TODO
 	#endif
 #endif
 ```
-* оператор логического 'И' **&&** возвращает true при истинности обоих операндов. Пример использования:
+* the boolean AND operator **&&** returns true if both operands are true. Example usage:
 ```
 #if (VERSION > "1" && Language == "English") && defined(PRINT_VERSION)
    ...
 #endif
 ```
-
-* оператор логического 'ИЛИ' **||** возвращает true при истинности хотя бы одного из операндов. Пример использования:
+* the logical OR operator **||** returns true if at least one of the operands is true. Example usage:
 ```
 #if VERSION > "1" || Language == "English" || defined(PRINT_VERSION)
    ...
 #endif
 ```
-* оператор отрицания **!** инвертирует значение находящегося за ним выражения. Пример использования:
+* the negation operator **!** inverts the value of the expression behind it. Example usage:
 ```
 #if !(VERSION > "1" || Language == "English") || !defined(PRINT_VERSION)
    ...
 #endif
 ```
-Выражение, которое не умещается на одной строке, может быть перенесено на следующую строку если указать символ '\' последним в строке, например
+An expression that does not fit to one line can be carried to the next line by specifying the `\` character last in the line, for example
 ```
 #if !(VERSION > "1" || Language == "English") || \
    !defined(PRINT_VERSION)
@@ -147,16 +168,74 @@ TODO
 #endif
 ```
 
+### Directives for automatic numbering
 
+In texts where you want parts, sections, pictures, etc. to be numbered automatically, the **$number** and **$ref** directives are used. The **$number** directive is replaced by a count incremented by one. It is written in the text as follows
+```
+$number{ имя_номера | имя_счетчика }
+```
+where `number_name` is a string that allows you to refer to the counter value obtained in this place of text in the directive **$ref** in other parts of the text; `number_name` is a counter, the value of which increases when inserting the number instead of $number directive. Number and counter names are text strings without spaces and punctuation marks. For example, the following directives
+```
+$number{number_intro | chapters}
+$number{number_mainpart | chapters}
+$number{number_figure_structure | figures}
+$number{number_figure_streams | figures}
+$number{number_conclusion | chapters}
+```
+will be transformed into this text
+```
+1
+2
+1
+2
+3
+```
+The **$number** directive is used to refer in the text to the number inserted by the **$number** directive. It is written in the following way
+```
+$ref{ имя_номера }
+``` 
+where `number_name` is the name of the number the directive refers to. For example the text
+```
+See [$ref{Susanto19}, $ref{Amalia20}].
 
+References
+$number{Amalia20|References}. Amalia, C.F. Title...
+$number{Susanto19|References}. Susanto, D.A. Title...
+```
+will be transformed into
+```
+See [2, 1].
 
+References
+1. Amalia, C.F. Title...
+2. Susanto, D.A. Title...
+```
+When automatically generating numbers in texts consisting of several separate files, the order in which the files are processed is important. The order can be set on the command line when starting the program with the `-o` (`--order`) option, followed by the file name with a list of files in processing order. In this file, each file name is specified on a separate line. You can also use the method when all required files are included in one main file using **#include** directives. In this case the order of file processing is determined by the order of **#include** directives.
 
+### Directives for naming text fragments
 
+Sometimes you need to insert a line in the text that appears elsewhere in the text. This may be necessary to avoid duplicating the text, and also to make sure that if you change the text in one place, it will automatically change in another. 
 
+The **$name** directive is used to indicate the text that will be copied elsewhere. The format of the directive is
+```
+$name{text_name | string}
+```
+where `text_name` is a unique name that allows you to insert a string into other parts of the text using the $named directive; `string` is a sequence of characters. To insert a string from the **$name** directive into the text, the **$named** directive is used, for which the name of the string to be inserted is specified. For example, the text
+```
+1. $name{Chapter1 | Introduction}
+...
+In chapter <b>$named{Chapter1}</b>...
+```
+will be transformed into
+```
+1. Introduction
+...
+In chapter <b>Introduction</b>...
+```
 
+### Examples
 
-
-
+Examples of how to use the directives can be found in the examples, which are located in the `/example` directory of the repository.
 
 ## Build and installation
 
@@ -169,31 +248,22 @@ make
 sudo make install
 ```
 
-
 ### Windows
 
 The executable file for Windows can be downloaded at https://github.com/vasyutin/smacro/releases. The file is distributed as a ZIP archive. Extract the executable from the archive and put it in the directory that is listed in your PATH environment variable, to ensure that it can be called from a command prompt.
 
 #### Build with MinGW
 
-To build SMACRO from sources you have to clone the repo or or download the sources from the project's releases pages (https://github.com/vasyutin/smacro/releases) and unzip them. 
-
-### Build with MinGW 
- 
-Chdir to *\<ProjectRoot\>\\projects\\mingw* and run
+Clone the repo or download the sources from the project's releases pages (https://github.com/vasyutin/smacro/releases) and unzip them. Chdir to `/projects/gcc` and run
 
 ```sh
 mingw32-make
 ``` 
-
-The compiled binary is placed in the folder *\<ProjectRoot\>\\build\\release* and named *smacro.exe*. To use it put it in the directory is listed in your *PATH* environment variable.
+The compiled binary is placed in the folder `/build/release` and named `smacro.exe*` To use it put it in the directory is listed in your `PATH` environment variable.
 
 ### Build with Visual Studio
 
-By now I supply solution (.sln) with the project files (.vcproj) files for Visual Studio 2015 Community Edition. To build the software open the solution file *\<ProjectRoot\>\\projects\\VS2015\\smacro.sln* and start the build process. The compiled binaries will be placed in the folder *\<ProjectRoot\>\build\Platform\Configuration*, where the *Platform* is 'Win32' or 'x64' and the *Configuration* is 'Debug' or 'Release'. To run the program outside Visual Studio, you have to copy the result binary file *smacro.exe* to the folder, which is added to your *PATH* environment variable.
-
-The sources are nothing than pure C++ thus the project can be opened in compiled in the newer version of Visual Studio.
-
+Clone the repo or download the sources from the project's releases pages (https://github.com/vasyutin/smacro/releases) and unzip them. Open the solution `/projects/vs2022/smacro.sln` in Visual Studio. Select `Release` configuration and run build. The compiled binary is placed in the folder `/build/x64/Release` and named `smacro.exe` To use it put it in the directory is listed in your `PATH` environment variable.
 
 
 ## License
