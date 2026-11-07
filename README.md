@@ -272,4 +272,4 @@ GNU GPL Version 3
 
 ## Author
 
-Sergey Vasyutin (sergey [at] vasyut.in)
+Sergey Vasyutin (sgvstn [at] gmail.com)
